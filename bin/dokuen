@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+
+require "rubygems"
+
+begin
+  require 'dokuen'
+rescue LoadError => e
+  path = File.expand_path '../../lib', __FILE__
+  $:.unshift(path) if File.directory?(path) && !$:.include?(path)
+  require 'dokuen'
+end
+
+Dokuen::Cli.start()

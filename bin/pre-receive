@@ -1,0 +1,122 @@
+#!/usr/bin/env ruby
+
+require 'tmpdir'
+require 'fileutils'
+require 'time'
+
+MASON = "/usr/local/Cellar/ruby/1.9.3-p125/lib/ruby/gems/1.9.1/gems/mason-0.0.11/bin/mason"
+BASE_BUILD_DIR = '/usr/local/var/dokuen/build'
+BASE_RELEASE_DIR = '/usr/local/var/dokuen/release'
+BASE_NGINX_CONF = '/usr/local/var/dokuen/nginx'
+BASE_ENV_DIR = '/usr/local/var/dokuen/env'
+
+should_deploy = `git config hooks.deploy`.chomp
+subdomain = `git config hooks.deploy.subdomain`.chomp
+port = `git config hooks.deploy.port`.chomp
+foreman = `git config hooks.deploy.foreman`.chomp
+buildpack_url = `git config hooks.deploy.buildpack`.chomp
+after_deploy = `git config hooks.deploy.after`.chomp
+
+exit(0) if should_deploy != "true"
+
+def sys(cmd)
+  system(cmd) or exit(1)
+end
+
+File.umask(0022)
+
+git_dir = Dir.getwd
+cache_dir = "#{BASE_BUILD_DIR}/#{subdomain}"
+now = Time.now().utc().strftime("%Y%m%dT%H%M%S")
+release_dir = "#{BASE_RELEASE_DIR}/#{subdomain}/#{now}"
+env_dir = "#{BASE_ENV_DIR}/#{subdomain}"
+
+FileUtils.mkdir_p(cache_dir, :mode => 0777)
+FileUtils.mkdir_p(release_dir, :mode => 0777)
+FileUtils.mkdir_p(env_dir, :mode => 0777)
+
+rev = ""
+STDIN.each do |line|
+  puts line
+  parts = line.split(/\s/)
+  next if parts[2] != "refs/heads/master"
+  rev = parts[1]
+end
+
+ENV['GIT_DIR'] = nil
+ENV['PATH'] = "/usr/local/bin:#{ENV['PATH']}"
+
+clone_dir = Dir.mktmpdir
+
+
+sys("git clone #{git_dir} #{clone_dir}")
+
+Dir.chdir clone_dir
+
+sys("git reset --hard #{rev}")
+
+sys("#{MASON} build #{clone_dir} -b #{buildpack_url} -o #{release_dir} -c #{cache_dir}")
+sys("chmod -R a+r #{release_dir}")
+sys("find #{release_dir} -type d -exec chmod a+x {} \\;")
+
+if after_deploy != ""
+  Dir.chdir release_dir
+  sys("envdir #{env_dir} foreman run #{after_deploy}")
+end
+
+base_port = port.to_i - 200
+
+launch_agent_contents = <<HERE
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>KeepAlive</key>
+  <true/>
+  <key>Label</key>
+  <string>info.bugsplat.#{subdomain}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/envdir</string>
+    <string>#{BASE_ENV_DIR}/#{subdomain}</string>
+    <string>/usr/local/bin/foreman</string>
+    <string>start</string>
+    <string>-c</string>
+    <string>#{foreman}</string>
+    <string>-f</string>
+    <string>#{release_dir}/Procfile</string>
+    <string>-p</string>
+    <string>#{base_port}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>UserName</key>
+  <string>peter</string>
+  <key>WorkingDirectory</key>
+  <string>#{release_dir}</string>
+</dict>
+</plist>
+HERE
+
+puts "Installing LaunchDaemon"
+File.open("#{release_dir}/info.bugsplat.#{subdomain}.plist", "w+") do |file|
+  file.write launch_agent_contents
+end
+sys("sudo /usr/local/bin/install_launchdaemon #{release_dir}/info.bugsplat.#{subdomain}.plist")
+
+puts "Restarting Nginx"
+File.open("#{BASE_NGINX_CONF}/info.bugsplat.#{subdomain}.conf", "w+") do |file|
+  file.write <<HERE
+server {
+  server_name #{subdomain}.bugsplat.info;
+  listen 443;
+  ssl on;
+  location / {
+    proxy_pass http://localhost:#{port}/;
+  }
+}
+
+HERE
+end
+
+sys("sudo /usr/local/bin/restart_nginx")
