@@ -12,10 +12,11 @@ module Dokuen
     desc "create [APP]", "Create a new application."
     def create(app="")
       raise "app name required" if app.nil? || app == ""
-      puts "Creating new application named #{app}"
       FileUtils.mkdir_p(Dokuen.dir("env", app))
       FileUtils.mkdir_p(Dokuen.dir("release", app))
       FileUtils.mkdir_p(Dokuen.dir("build", app))
+      puts "Created new application named #{app}"
+      puts "Git remote: #{Dokuen.base_clone_url}:apps/#{app}.git"
     end
 
     desc "restart_app [APP]", "Restart an existing app"
@@ -61,7 +62,7 @@ module Dokuen
     desc "restart_nginx", "Restart Nginx", :hide => true
     def restart_nginx
       raise "Must be run as root" unless Process.uid == 0
-      Dokuen.sys("/usr/local/bin/nginx -s reload")
+      Dokuen.sys("/usr/local/sbin/nginx -s reload")
     end
 
     desc "install_launchdaemon [APP] [RELEASE_PATH]", "Install a launch daemon", :hide => true
@@ -88,7 +89,8 @@ module Dokuen
       end
     end
 
-    desc "config [APP] [set/delete] -- KEY=VAL...", "Add or remove config variables"
+    desc "config [APP] [set/delete]", "Add or remove config variables"
+    method_option :vars, :aliases => '-V', :desc => "Variables to set or remove", :type => :array
     def config(app="", subcommand="")
       case subcommand
       when "set"
@@ -103,9 +105,7 @@ module Dokuen
     no_tasks do
 
      def set_vars(app)
-       split = ARGV.index("--")
-       vars = ARGV[split,ARGV.length]
-
+       vars = options[:vars]
        vars.each do |var|
          key, val = var.split(/\=/)
          Dokuen.set_env(app, key, val)
@@ -113,8 +113,7 @@ module Dokuen
      end
 
      def delete_vars(app)
-       split = ARGV.index("--")
-       vars = ARGV[split,ARGV.length]
+       vars = options[:vars]
 
        vars.each do |var|
          Dokuen.rm_env(app, var)

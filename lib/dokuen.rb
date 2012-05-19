@@ -35,4 +35,8 @@ module Dokuen
     env_dir = Dokuen.dir('env', name)
     File.delete(File.join(env_dir, key))
   end
+
+  def self.base_clone_url
+    "#{ENV['DOKUEN_GIT_USER']}@#{ENV['DOKUEN_GIT_SERVER']}"
+  end
 end
