@@ -57,10 +57,10 @@ module Dokuen
       puts "Scaled to #{scale_spec}"
     end
 
-    desc "deploy [APP]", "Force a fresh deploy of an app", :hide => true
-    def deploy(app="")
+    desc "deploy [APP] [REV]", "Force a fresh deploy of an app", :hide => true
+    def deploy(app="", rev="")
       read_env(app)
-      Dokuen::Deploy.new(app).run
+      Dokuen::Deploy.new(app, rev).run
     end
 
     desc "restart_nginx", "Restart Nginx", :hide => true

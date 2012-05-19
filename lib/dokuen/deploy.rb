@@ -6,14 +6,13 @@ require 'erb'
 module Dokuen
   class Deploy
 
-    def initialize(app)
+    def initialize(app, rev)
       @app = app || app_name_from_env
     end
 
     def run
       read_app_env
       make_dirs
-      read_revisions
       clone
       build
       install_launch_daemon
@@ -32,17 +31,6 @@ module Dokuen
         cache_dir,
         nginx_dir
       ])
-    end
-
-    def read_revisions
-      STDIN.each do |line|
-        parts = line.split(/\s/)
-        next if parts[2] != "refs/heads/master"
-        @rev = parts[1]
-      end
-      if @rev.nil?
-        raise "Error: Dokuen can only deploy the master branch"
-      end
     end
 
     def clone
