@@ -11,9 +11,11 @@ Gem::Specification.new do |s|
 
   s.require_paths = %w< lib >
 
-  s.files = Dir['lib/**/*.rb'] +
-    Dir['test/*.rb'] +
-    %w< dokuen.gemspec README.md >
+  s.bindir        = 'bin'
+  s.files         = `git ls-files`.split("\n")
+  s.test_files    = `git ls-files -- test/*`.split("\n")
+  s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  s.require_paths = ["lib"]
 
   s.test_files = s.files.select {|path| path =~ /^test\/.*.rb/ }
 
