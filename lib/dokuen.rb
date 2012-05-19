@@ -1,45 +1,38 @@
-require 'rubygems'
-require 'thor'
-require 'fileutils'
+require 'dokuen/cli'
+require 'dokuen/deploy'
 
 module Dokuen
-  class Cli < Thor
-    desc "setup", "Set up relevant things. Needs to be run as sudo."
-    def setup
-      raise "Must be run as root" unless Process.uid == 0
-    end
+  def self.dir(name, app=nil)
+    parts = ["/usr/local/var/dokuen", name]
 
-    desc "create [APP]", "Create a new application."
-    def create(app="")
-      raise "app name required" if app.nil? || app == ""
-      puts "Creating new application named #{app}"
+    if not app.nil?
+      parts << app
     end
+      
+    File.join(parts)
+  end
 
-    desc "restart [APP]", "Restart an existing app"
-    def restart(app="")
-    end
+  def self.sys(command)
+    system(command) or raise "Error running #{command}"
+  end
 
-    desc "scale [APP] [SCALE_SPEC]", "Scale an existing app up or down"
-    def scale(app="", scale_spec="")
+  def self.read_env(name)
+    env_dir = Dokuen.dir('env', name)
+    Dir.glob("#{env_dir}/*") do |var|
+      var_name = File.basename(var)
+      ENV[var_name] = File.open(var).read().chomp()
     end
+  end
 
-    desc "deploy [APP]", "Force a fresh deploy of an app"
-    def deploy(app="")
+  def self.set_env(name, key, value)
+    env_dir = Dokuen.dir('env', name)
+    File.open(File.join(env_dir, key), "w+") do |f|
+      f.write value
     end
+  end
 
-    desc "restart_nginx", "Restart Nginx"
-    def restart_nginx
-      raise "Must be run as root" unless Process.uid == 0
-    end
-
-    desc "install_launchdaemon [APP] [RELEASE_PATH]", "Install a launch daemon"
-    def install_launchdaemon(app="", release_path="")
-      raise "Must be run as root" unless Process.uid == 0
-    end
-
-    desc "run_command [APP] [COMMAND]", "Run a command in the given app's environment"
-    def run_command(app="", command="")
-    end
-    
+  def self.rm_env(name, key)
+    env_dir = Dokuen.dir('env', name)
+    File.delete(File.join(env_dir, key))
   end
 end
