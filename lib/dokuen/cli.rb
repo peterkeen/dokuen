@@ -4,9 +4,90 @@ require 'fileutils'
 
 module Dokuen
   class Cli < Thor
+    include Thor::Actions
+    
     desc "setup", "Set up relevant things. Needs to be run as sudo."
     def setup
       raise "Must be run as root" unless Process.uid == 0
+      git_username = ask("What is your git username (usually git)?")
+      gitolite_src = ask("What is the path to your gitolite clone?")
+      say("Installing gitolite command")
+      create_file "#{gitolite_src}/src/commands/dokuen", <<HERE
+#!/bin/sh
+/usr/local/bin/dokuen $@
+HERE
+      File.chmod(0755, "#{gitolite_src}/src/commands/dokuen")
+      say("Installing gitolite hook")
+      hook_path = "/Users/#{git_username}/.gitolite/hooks/common/pre-receive"
+      create_file(hook_path, <<'HERE'
+#!/usr/bin/env ruby
+hook = `git config hooks.pre`.chomp
+
+rev = nil
+
+STDIN.each do |line|
+  parts = line.split(/\s/)
+  next if parts[2] != "refs/heads/master"
+  rev = parts[1]
+end
+
+if hook != ""
+  name = File.basename(ENV['GL_REPO'])
+  cmd = "#{hook} #{name} #{rev}"
+  system(cmd) or raise "Error running pre-hook: #{cmd} returned #{$?}"
+end
+HERE
+      )
+      File.chmod(0755, hook_path)
+      say("Creating directories")
+      dirs = [
+        '/usr/local/var/dokuen/env',
+        '/usr/local/var/dokuen/env/_common',
+        '/usr/local/var/dokuen/log',
+        '/usr/local/var/dokuen/nginx',
+        '/usr/local/var/dokuen/build',
+        '/usr/local/var/dokuen/releases',
+      ]
+      FileUtils.mkdir_p(dirs, :mode => 0775)
+      FileUtils.chown(git_username, 'staff', dirs)
+
+      if yes?("Do you want to set up DNS?")
+        basename = ask("What is your DNS base domain? For example, if have a wildcard CNAME for *.example.com, this would be example.com.")
+        create_file("/usr/local/var/dokuen/env/_common/BASE_DOMAIN", basename)
+      end
+      git_hostname = `hostname`.chomp
+      if no?("Is #{git_hostname} the correct hostname for git remotes?")
+        git_hostname = ask("What hostname should we use instead?")
+      end
+      create_file("/usr/local/var/dokuen/env/_common/DOKUEN_GIT_SERVER", git_hostname)
+      create_file("/usr/local/var/dokuen/env/_common/DOKUEN_GIT_USER", git_username)
+
+      say(<<HERE
+
+==== IMPORTANT INSTRUCTIONS ====
+
+In your .gitolite.rc file, in the COMMANDS section, add the following:
+
+    'dokuen' => 1
+
+In your gitolite.conf file, add the following:
+
+repo apps/[a-zA-Z0-9].*
+    C = @all
+    RW+ = CREATOR
+    config hooks.pre = "/usr/local/bin/dokuen deploy"
+
+In your nginx.conf, add the following to your http section:
+
+include "/usr/local/var/dokuen/nginx/*.conf";
+
+Run "sudo visudo" and add the following line:
+
+git	ALL=NOPASSWD: /usr/local/bin/dokuen
+
+HERE
+          )
+
     end
 
     desc "create [APP]", "Create a new application."
@@ -104,6 +185,23 @@ module Dokuen
       else
         show_vars(app)
       end
+    end
+
+    desc "install_buildpack [URL]", "Add a buildpack to the mason config"
+    def install_buildpack(url="")
+      raise "URL required" unless url != ""
+      Dokuen.sys("/usr/local/bin/mason buildpacks:install #{url}")
+    end
+
+    desc "remove_buildpack [NAME]", "Remove a buildpack from the mason config"
+    def remove_buildpack(name)
+      raise "Name required" unless name != ""
+      Dokuen.sys("/usr/local/bin/mason buildpacks:uninstall #{name}")
+    end
+
+    desc "buildpacks", "List the available buildpacks"
+    def buildpacks
+      Dokuen.sys("/usr/local/bin/mason buildpacks")
     end
 
     no_tasks do
