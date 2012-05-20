@@ -161,13 +161,15 @@ HERE
       Dokuen.sys("launchctl load -wF #{destpath}")
     end
 
-    desc "run_command [APP] [COMMAND]", "Run a command in the given app's environment"
-    def run_command(app="", command="")
+    desc "run_command [APP]", "Run a command in the given app's environment"
+    method_option :command, :aliases => '-C', :desc => "Command to run"
+    def run_command(app="")
       check_app(app)
       read_env(app)
 
+      ENV['PATH'] = "/usr/local/bin:#{ENV['PATH']}"
       Dir.chdir(ENV['DOKUEN_RELEASE_DIR']) do
-        Dokuen.sys("foreman run #{command}")
+        Dokuen.sys("foreman run #{options[:command]}")
       end
     end
 
