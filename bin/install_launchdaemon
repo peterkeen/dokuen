@@ -1,6 +1,0 @@
-#!/bin/bash
-
-NAME=`basename $1`
-cp $1 /Library/LaunchDaemons
-launchctl unload -wF /Library/LaunchDaemons/$NAME
-launchctl load -wF /Library/LaunchDaemons/$NAME
