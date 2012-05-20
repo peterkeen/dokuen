@@ -1,7 +1,11 @@
+$:.push File.expand_path("../lib", __FILE__)
+
+require 'dokuen/version'
+
 Gem::Specification.new do |s|
   s.name = 'dokuen'
-  s.version = '0.0.1'
-  s.date = '2012-05-19'
+  s.version = Dokuen::VERSION
+  s.date = `date +%Y-%m-%d`
 
   s.summary = 'A Personal Application Platform for Macs'
   s.description = 'Like Heroku but Personal'
