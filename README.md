@@ -13,7 +13,7 @@ Dokuen is a "personal app platform". It's the same idea as all of these PaaS and
 ### Step 1
 
 WARNING: At the moment Dokuen needs a custom version of Mason. A patch has been accepted but as
-of now (2012-05-19) there hasn't been a release with ths patch. So, install mason:
+of now (2012-05-19) there hasn't been a release with this patch. So, install mason:
 
 ```
 $ git clone https://github.com/peterkeen/mason
@@ -78,15 +78,15 @@ $ open http://<your_host>:12345/
 
 ## Available "app" Sub-commands
 
-* create <name>
-* config <name>
-  * set <key>=<value> ...
-  * delete <key> ...
-* restart_app <name>
-* scale <name> <type>=<num>
-* buildpacks
-* install_buildpack
-* remove_buildpack
+* `create <name>`
+* `config <name>`
+  * `set <key>=<value> ...`
+  * `delete <key> ...`
+* `restart_app <name>`
+* `scale <name> <type>=<num>`
+* `buildpacks`
+* `install_buildpack <url>`
+* `remove_buildpack <name>`
 
 ## DNS Setup
 
