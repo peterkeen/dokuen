@@ -12,13 +12,28 @@ Dokuen is a "personal app platform". It's the same idea as all of these PaaS and
 
 ### Step 1
 
+WARNING: At the moment Dokuen needs a custom version of Mason. A patch has been accepted but as
+of now (2012-05-19) there hasn't been a release with ths patch. So, install mason:
+
+```
+$ git clone https://github.com/peterkeen/mason
+$ cd mason
+$ gem build mason.gemspec
+$ gem install mason-0.0.11.gem
+```
+
+Then, install dokuen:
 ```
 gem install dokuen
 ```
 
 ### Step 2
 
-Install nginx using homebrew.
+Install nginx using homebrew:
+
+```
+$ brew install nginx
+```
 
 ### Step 3
 
