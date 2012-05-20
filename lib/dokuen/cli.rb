@@ -22,24 +22,19 @@ module Dokuen
 
     desc "restart_app [APP]", "Restart an existing app"
     def restart_app(app="")
+      check_app(app)
       read_env(app)
-      filename = "/Library/LaunchDaemons/dokuen.#{app}.plist"
-      Dokuen.sys("sudo dokuen restart_path #{filename}")
-    end
-
-    desc "restart_path [PATH]", "Restart a path", :hide => true
-    def restart_path(path)
-      raise "Must be run as root" unless Process.uid == 0
-      read_env(app)
-      if File.exists? path
-        Dokuen.sys("launchctl unload -wF #{path}")
-        Dokuen.sys("launchctl load -wF #{path}")
-      end
+      deploy = Dokuen::Deploy.new(app, '', ENV['DOKUEN_RELEASE_DIR'])
+      deploy.install_launch_daemon
+      deploy.install_nginx_conf
+      puts "App restarted"
     end
 
     desc "start_app [APP]", "Start an app", :hide => true
     def start_app(app="")
+      check_app(app)
       read_env(app)
+      ENV['PATH'] = "/usr/local/bin:#{ENV['PATH']}"
       Dir.chdir(ENV['DOKUEN_RELEASE_DIR']) do
         base_port = ENV['PORT'].to_i - 200
         scale = ENV['DOKUEN_SCALE'].nil? ? "" : "-c #{ENV['DOKUEN_SCALE']}"
@@ -49,7 +44,7 @@ module Dokuen
 
     desc "scale [APP] [SCALE_SPEC]", "Scale an app to the given spec"
     def scale(app="", scale_spec="")
-      raise "app required" if app == ""
+      check_app(app)
       raise "scale spec required" if scale_spec == ""
       read_env(app)
       Dokuen.set_env(app, 'DOKUEN_SCALE', scale_spec)
@@ -57,23 +52,23 @@ module Dokuen
       puts "Scaled to #{scale_spec}"
     end
 
-    desc "deploy [APP] [REV]", "Force a fresh deploy of an app", :hide => true
+    desc "deploy [APP] [REV]", "Deploy an app for a given revision. Run within git pre-receive.", :hide => true
     def deploy(app="", rev="")
+      check_app(app)
       read_env(app)
       Dokuen::Deploy.new(app, rev).run
+      puts "App #{app} deployed"
     end
 
     desc "restart_nginx", "Restart Nginx", :hide => true
     def restart_nginx
       raise "Must be run as root" unless Process.uid == 0
-      read_env(app)
       Dokuen.sys("/usr/local/sbin/nginx -s reload")
     end
 
     desc "install_launchdaemon [PATH]", "Install a launch daemon", :hide => true
     def install_launchdaemon(path)
       raise "Must be run as root" unless Process.uid == 0
-      read_env(app)
       basename = File.basename(path)
       destpath = "/Library/LaunchDaemons/#{basename}"
 
@@ -87,6 +82,7 @@ module Dokuen
 
     desc "run_command [APP] [COMMAND]", "Run a command in the given app's environment"
     def run_command(app="", command="")
+      check_app(app)
       read_env(app)
 
       Dir.chdir(ENV['DOKUEN_RELEASE_DIR']) do
@@ -97,11 +93,14 @@ module Dokuen
     desc "config [APP] [set/delete]", "Add or remove config variables"
     method_option :vars, :aliases => '-V', :desc => "Variables to set or remove", :type => :array
     def config(app="", subcommand="")
+      check_app(app)
       case subcommand
       when "set"
         set_vars(app)
+        restart_app(app)
       when "delete"
         delete_vars(app)
+        restart_app(app)
       else
         show_vars(app)
       end
@@ -115,6 +114,7 @@ module Dokuen
           key, val = var.split(/\=/)
           Dokuen.set_env(app, key, val)
         end
+        puts "Vars set"
       end
 
       def delete_vars(app)
@@ -123,6 +123,7 @@ module Dokuen
         vars.each do |var|
           Dokuen.rm_env(app, var)
         end
+        puts "Vars removed"
       end
 
       def show_vars(app)
@@ -135,6 +136,10 @@ module Dokuen
       def read_env(app)
         Dokuen.read_env("_common")
         Dokuen.read_env(app)
+      end
+
+      def check_app(app)
+        Dokuen.app_exists?(app) or raise "App '#{app}' does not exist!"
       end
     end
   end

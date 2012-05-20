@@ -39,4 +39,8 @@ module Dokuen
   def self.base_clone_url
     "#{ENV['DOKUEN_GIT_USER']}@#{ENV['DOKUEN_GIT_SERVER']}"
   end
+
+  def self.app_exists?(name)
+    File.exists?(Dokuen.dir('env', name))
+  end
 end

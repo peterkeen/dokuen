@@ -6,8 +6,14 @@ require 'erb'
 module Dokuen
   class Deploy
 
-    def initialize(app, rev)
+    def initialize(app, rev, release_dir=nil)
       @app = app || app_name_from_env
+      @rev = rev
+      ENV['GIT_DIR'] = nil
+      ENV['PATH'] = "/usr/local/bin:#{ENV['PATH']}"
+      if release_dir
+        @release_dir = release_dir
+      end
     end
 
     def run
@@ -35,9 +41,8 @@ module Dokuen
 
     def clone
       Dokuen.sys("git clone #{git_dir} #{clone_dir}")
-      Dir.chdir(clone_dir) do
-        Dokuen.sys("git reset --hard #{@rev}")
-      end
+      Dir.chdir(clone_dir)
+      Dokuen.sys("git checkout #{@rev}")
     end
 
     def build
@@ -64,8 +69,8 @@ module Dokuen
 
     def install_launch_daemon
       t = ERB.new(launch_daemon_template)
-      plist_path = File.join(release_dir, "dokuen.#{app}.plist")
-      File.open(plist_path) do |f|
+      plist_path = File.join(release_dir, "dokuen.#{@app}.plist")
+      File.open(plist_path, "w+") do |f|
         f.write(t.result(binding))
       end
       Dokuen.sys("sudo /usr/local/bin/dokuen install_launchdaemon #{plist_path}")
@@ -73,7 +78,7 @@ module Dokuen
 
     def install_nginx_conf
       t = ERB.new(nginx_template)
-      File.open(File.join(nginx_dir, "#{app}.#{base_domain}.conf")) do |f|
+      File.open(File.join(nginx_dir, "#{@app}.#{base_domain}.conf"), "w+") do |f|
         f.write(t.result(binding))
       end
       Dokuen.sys("sudo /usr/local/bin/dokuen restart_nginx")
@@ -96,7 +101,7 @@ module Dokuen
     end
 
     def git_dir
-      @git_dir ||= ENV['GIT_DIR'] || Dir.getwd
+      @git_dir || Dir.getwd
     end
 
     def release_dir
@@ -112,6 +117,14 @@ module Dokuen
       Dokuen.dir('nginx')
     end
 
+    def server_port
+      ENV['USE_SSL'] ? "443" : "80"
+    end
+    
+    def ssl_on
+      ENV['USE_SSL'] ? "on" : "off"
+    end
+
     def launch_daemon_template
       <<HERE
 <?xml version="1.0" encoding="UTF-8"?>
@@ -121,12 +134,12 @@ module Dokuen
   <key>KeepAlive</key>
   <true/>
   <key>Label</key>
-  <string>dokuen.<%= app %></string>
+  <string>dokuen.<%= @app %></string>
   <key>ProgramArguments</key>
   <array>
     <string>/usr/local/bin/dokuen</string>
     <string>start_app</string>
-    <string><%= app %></string>
+    <string><%= @app %></string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -134,6 +147,10 @@ module Dokuen
   <string>peter</string>
   <key>WorkingDirectory</key>
   <string>/usr/local/var/dokuen</string>
+  <key>StandardOutPath</key>
+  <string>/usr/local/var/dokuen/log/<%= @app %>.log</string>
+  <key>StandardErrorPath</key>
+  <string>/usr/local/var/dokuen/log/<%= @app %>.log</string>
 </dict>
 </plist>
 HERE
@@ -142,11 +159,11 @@ HERE
     def nginx_template
       <<HERE
 server {
-  server_name <%= app %>.<%= base_domain %>;
+  server_name <%= @app %>.<%= base_domain %>;
   listen <%= server_port %>;
   ssl <%= ssl_on %>;
   location / {
-    proxy_pass http://localhost:<%= port %>/;
+    proxy_pass http://localhost:<%= ENV['PORT'] %>/;
   }
 }
 HERE
