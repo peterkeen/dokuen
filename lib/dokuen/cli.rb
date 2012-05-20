@@ -46,7 +46,7 @@ HERE
         '/usr/local/var/dokuen/log',
         '/usr/local/var/dokuen/nginx',
         '/usr/local/var/dokuen/build',
-        '/usr/local/var/dokuen/releases',
+        '/usr/local/var/dokuen/release',
       ]
       FileUtils.mkdir_p(dirs, :mode => 0775)
       FileUtils.chown(git_username, 'staff', dirs)
