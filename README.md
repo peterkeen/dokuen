@@ -1,6 +1,6 @@
 # Dokuen, a Personal App Platform
 
-Dokuen is a "personal app platform". It's the same idea as all of these PaaS and IaaS services out there, except you host it on your own machine. It's specifically for hosting multiple 12-factor applications on one Mac.
+Dokuen is a "personal app platform". It's the same idea as all of these PaaS and IaaS services out there, except you host it on your own machine. It's specifically for hosting multiple 12-factor applications on one Mac. [Here](http://bugsplat.info/2012-05-17-dokuen-a-personal-app-platform.html) is an article that explains my motivations.
 
 ## Requirements
 
