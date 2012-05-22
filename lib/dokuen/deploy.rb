@@ -73,7 +73,7 @@ module Dokuen
       File.open(plist_path, "w+") do |f|
         f.write(t.result(binding))
       end
-      Dokuen.sys("sudo /usr/local/bin/dokuen install_launchdaemon #{plist_path}")
+      Dokuen.sys("sudo /usr/local/bin/dokuen_install_launchdaemon #{plist_path}")
     end
 
     def install_nginx_conf
@@ -81,7 +81,7 @@ module Dokuen
       File.open(File.join(nginx_dir, "#{@app}.#{base_domain}.conf"), "w+") do |f|
         f.write(t.result(binding))
       end
-      Dokuen.sys("sudo /usr/local/bin/dokuen restart_nginx")
+      Dokuen.sys("sudo /usr/local/bin/dokuen_restart_nginx")
     end
 
     def base_domain
