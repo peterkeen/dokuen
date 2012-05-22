@@ -144,7 +144,7 @@ module Dokuen
   <key>RunAtLoad</key>
   <true/>
   <key>UserName</key>
-  <string>peter</string>
+  <string><%= ENV['GL_USER'] %></string>
   <key>WorkingDirectory</key>
   <string>/usr/local/var/dokuen</string>
   <key>StandardOutPath</key>
