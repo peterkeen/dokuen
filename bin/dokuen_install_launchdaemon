@@ -3,8 +3,8 @@
 require 'rubygems'
 require 'dokuen'
 
-name = File.basename(ARGV[1])
+name = File.basename(ARGV[0])
 
-Dokuen.sys("cp #{ARGV[1]} /Library/LaunchDaemons")
+Dokuen.sys("cp #{ARGV[0]} /Library/LaunchDaemons")
 Dokuen.sys("launchctl unload -wF /Library/LaunchDaemons/#{name}")
 Dokuen.sys("launchctl load -wF /Library/LaunchDaemons/#{name}")
