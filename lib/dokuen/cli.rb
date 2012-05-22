@@ -141,26 +141,6 @@ HERE
       puts "App #{app} deployed"
     end
 
-    desc "restart_nginx", "Restart Nginx", :hide => true
-    def restart_nginx
-      raise "Must be run as root" unless Process.uid == 0
-      Dokuen.sys("/usr/local/sbin/nginx -s reload")
-    end
-
-    desc "install_launchdaemon [PATH]", "Install a launch daemon", :hide => true
-    def install_launchdaemon(path)
-      raise "Must be run as root" unless Process.uid == 0
-      basename = File.basename(path)
-      destpath = "/Library/LaunchDaemons/#{basename}"
-
-      if File.exists?(destpath)
-        Dokuen.sys("launchctl unload -wF #{destpath}")
-      end
-
-      Dokuen.sys("cp #{path} #{destpath}")
-      Dokuen.sys("launchctl load -wF #{destpath}")
-    end
-
     desc "run_command [APP]", "Run a command in the given app's environment"
     method_option :command, :aliases => '-C', :desc => "Command to run"
     def run_command(app="")
