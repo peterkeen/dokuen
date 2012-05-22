@@ -83,7 +83,7 @@ include "/usr/local/var/dokuen/nginx/*.conf";
 
 Run "sudo visudo" and add the following line:
 
-git	ALL=NOPASSWD: /usr/local/bin/dokuen
+git	ALL=NOPASSWD: /usr/local/bin/dokuen_install_launchdaemon, /usr/local/bin/dokuen_restart_nginx
 
 HERE
           )
