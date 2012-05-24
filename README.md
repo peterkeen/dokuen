@@ -44,6 +44,8 @@ Create a `git` user and install gitolite according to [package directions](http:
 Run this:
 
 ```
+$ sudo mkdir -p /usr/local/var/dokuen
+$ cd /usr/local/var/dokuen
 $ sudo dokuen setup
 ```
 
@@ -107,4 +109,5 @@ $ ssh git@<your_host> dokuen restart_app <name>
 ## Rails
 
 Unfortunately the stock Heroku buildpacks install a vendored node.js compiled for the Heroku platform, which happens to be linux. This doesn't work for Mac, which means you have to use a slightly patched version. This one works with a homebrew-installed node.js: https://github.com/peterkeen/heroku-buildpack-ruby
+
 

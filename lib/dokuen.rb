@@ -1,9 +1,10 @@
 require 'dokuen/cli'
 require 'dokuen/deploy'
+require 'dokuen/config'
 
 module Dokuen
   def self.dir(name, app=nil)
-    parts = ["/usr/local/var/dokuen", name]
+    parts = [File.dirname(File.expand_path($0)), '..', name]
 
     if not app.nil?
       parts << app
@@ -37,7 +38,7 @@ module Dokuen
   end
 
   def self.base_clone_url
-    "#{ENV['DOKUEN_GIT_USER']}@#{ENV['DOKUEN_GIT_SERVER']}"
+    "#{Dokuen::Config.instance.git_user}@#{Dokuen::Config.instance.git_server}"
   end
 
   def self.app_exists?(name)

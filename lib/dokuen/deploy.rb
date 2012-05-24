@@ -21,8 +21,8 @@ module Dokuen
       make_dirs
       clone
       build
-      install_launch_daemon
-      install_nginx_conf
+      install_runner
+      install_web_conf
     end
 
     def read_app_env
@@ -67,8 +67,8 @@ module Dokuen
       end
     end
 
-    def install_launch_daemon
-      t = ERB.new(launch_daemon_template)
+    def install_runner
+      t = ERB.new(Dokuen::Template.launch_daemon)
       plist_path = File.join(release_dir, "dokuen.#{@app}.plist")
       File.open(plist_path, "w+") do |f|
         f.write(t.result(binding))
@@ -76,8 +76,8 @@ module Dokuen
       Dokuen.sys("sudo /usr/local/bin/dokuen_install_launchdaemon #{plist_path}")
     end
 
-    def install_nginx_conf
-      t = ERB.new(nginx_template)
+    def install_web_conf
+      t = ERB.new(Dokuen::Template.nginx)
       File.open(File.join(nginx_dir, "#{@app}.#{base_domain}.conf"), "w+") do |f|
         f.write(t.result(binding))
       end
@@ -85,7 +85,7 @@ module Dokuen
     end
 
     def base_domain
-      ENV['BASE_DOMAIN'] || 'dokuen'
+      Dokuen::Config.instance.base_domain_name
     end
 
     def app_name_from_env
@@ -125,49 +125,6 @@ module Dokuen
       ENV['USE_SSL'] ? "on" : "off"
     end
 
-    def launch_daemon_template
-      <<HERE
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>KeepAlive</key>
-  <true/>
-  <key>Label</key>
-  <string>dokuen.<%= @app %></string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/local/bin/dokuen</string>
-    <string>start_app</string>
-    <string><%= @app %></string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>UserName</key>
-  <string><%= ENV['GL_USER'] %></string>
-  <key>WorkingDirectory</key>
-  <string>/usr/local/var/dokuen</string>
-  <key>StandardOutPath</key>
-  <string>/usr/local/var/dokuen/log/<%= @app %>.log</string>
-  <key>StandardErrorPath</key>
-  <string>/usr/local/var/dokuen/log/<%= @app %>.log</string>
-</dict>
-</plist>
-HERE
-    end
-
-    def nginx_template
-      <<HERE
-server {
-  server_name <%= @app %>.<%= base_domain %>;
-  listen <%= server_port %>;
-  ssl <%= ssl_on %>;
-  location / {
-    proxy_pass http://localhost:<%= ENV['PORT'] %>/;
-  }
-}
-HERE
-    end
   end
 end
 

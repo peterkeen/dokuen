@@ -1,25 +1,47 @@
 require 'rubygems'
 require 'thor'
 require 'fileutils'
+require 'yaml'
 
 module Dokuen
   class Cli < Thor
     include Thor::Actions
     
     desc "setup", "Set up relevant things. Needs to be run as sudo."
+    method_option :gituser, :desc => "Username of git user", :default => 'git'
+    method_option :gitgroup, :desc => "Group of git user", :default => 'staff'
+    method_option :gitolite, :desc => "Path to gitolite directory", :default => 'GITUSER_HOME/gitolite'
     def setup
       raise "Must be run as root" unless Process.uid == 0
-      git_username = ask("What is your git username (usually git)?")
-      gitolite_src = ask("What is the path to your gitolite clone?")
-      say("Installing gitolite command")
-      create_file "#{gitolite_src}/src/commands/dokuen", <<HERE
-#!/bin/sh
-/usr/local/bin/dokuen $@
+
+      current_script = File.expand_path($0)
+      current_bin_path = File.dirname(current_script)
+
+      dirs = [
+        './env',
+        './env/_common',
+        './log',
+        './nginx',
+        './build',
+        './release',
+        './bin'
+      ]
+      dirs.each do |dir|
+        empty_directory(dir)
+      end
+      FileUtils.chown(options[:gituser], options[:gitgroup], dirs)
+      githome = File.expand_path("~#{options[:gituser]}")
+      gitolite = options[:gitolite].gsub('GITUSER_HOME', githome)
+      File.symlink(current_script, File.expand_path("bin/dokuen"))
+
+      create_file("#{gitolite}/src/commands/dokuen", <<HERE)
+#!/bin/bash
+
+#{File.expand_path("./bin/dokuen")} $@
 HERE
-      File.chmod(0755, "#{gitolite_src}/src/commands/dokuen")
-      say("Installing gitolite hook")
-      hook_path = "/Users/#{git_username}/.gitolite/hooks/common/pre-receive"
-      create_file(hook_path, <<'HERE'
+
+      hook_path = "#{githome}/.gitolite/hooks/common/pre-receive"
+      create_file(hook_path, <<'HERE')
 #!/usr/bin/env ruby
 hook = `git config hooks.pre`.chomp
 
@@ -37,32 +59,19 @@ if hook != ""
   system(cmd) or raise "Error running pre-hook: #{cmd} returned #{$?}"
 end
 HERE
-      )
       File.chmod(0755, hook_path)
-      say("Creating directories")
-      dirs = [
-        '/usr/local/var/dokuen/env',
-        '/usr/local/var/dokuen/env/_common',
-        '/usr/local/var/dokuen/log',
-        '/usr/local/var/dokuen/nginx',
-        '/usr/local/var/dokuen/build',
-        '/usr/local/var/dokuen/release',
-      ]
-      FileUtils.mkdir_p(dirs, :mode => 0775)
-      FileUtils.chown(git_username, 'staff', dirs)
 
-      if yes?("Do you want to set up DNS?")
-        basename = ask("What is your DNS base domain? For example, if have a wildcard CNAME for *.example.com, this would be example.com.")
-        create_file("/usr/local/var/dokuen/env/_common/BASE_DOMAIN", basename)
-      end
-      git_hostname = `hostname`.chomp
-      if no?("Is #{git_hostname} the correct hostname for git remotes?")
-        git_hostname = ask("What hostname should we use instead?")
-      end
-      create_file("/usr/local/var/dokuen/env/_common/DOKUEN_GIT_SERVER", git_hostname)
-      create_file("/usr/local/var/dokuen/env/_common/DOKUEN_GIT_USER", git_username)
+      config = {
+        'base_domain_name' => 'dokuen',
+        'git_server'       => `hostname`.chomp,
+        'git_user'         => options[:gituser],
+      }
 
-      say(<<HERE
+      File.open("./dokuen.conf", 'w+') do |f|
+        YAML.dump(config, f)
+      end
+
+      say(<<HERE)
 
 ==== IMPORTANT INSTRUCTIONS ====
 
@@ -75,28 +84,28 @@ In your gitolite.conf file, add the following:
 repo apps/[a-zA-Z0-9].*
     C = @all
     RW+ = CREATOR
-    config hooks.pre = "/usr/local/bin/dokuen deploy"
+    config hooks.pre = "#{File.expand_path('./bin/dokuen')} deploy"
 
 In your nginx.conf, add the following to your http section:
 
-include "/usr/local/var/dokuen/nginx/*.conf";
+include "#{File.expand_path('nginx')}/*.conf";
 
 Run "sudo visudo" and add the following line:
 
-git	ALL=NOPASSWD: /usr/local/bin/dokuen_install_launchdaemon, /usr/local/bin/dokuen_restart_nginx
+git	ALL=NOPASSWD: #{current_bin_path}/dokuen_install_launchdaemon, #{current_bin_path}/dokuen_restart_nginx
 
 HERE
-          )
 
     end
 
     desc "create [APP]", "Create a new application."
     def create(app="")
       raise "app name required" if app.nil? || app == ""
+      check_not_app(app)
       read_env(app)
-      FileUtils.mkdir_p(Dokuen.dir("env", app))
-      FileUtils.mkdir_p(Dokuen.dir("release", app))
-      FileUtils.mkdir_p(Dokuen.dir("build", app))
+      empty_directory(Dokuen.dir("env", app))
+      empty_directory(Dokuen.dir("release", app))
+      empty_directory(Dokuen.dir("build", app))
       puts "Created new application named #{app}"
       puts "Git remote: #{Dokuen.base_clone_url}:apps/#{app}.git"
     end
@@ -221,6 +230,11 @@ HERE
       def check_app(app)
         Dokuen.app_exists?(app) or raise "App '#{app}' does not exist!"
       end
+      
+      def check_not_app(app)
+        not Dokuen.app_exists?(app) or raise "App '#{app}' does not exist!"
+      end
+
     end
   end
 end
