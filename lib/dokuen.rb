@@ -44,4 +44,8 @@ module Dokuen
   def self.app_exists?(name)
     File.exists?(Dokuen.dir('env', name))
   end
+
+  def self.bin_path
+    File.dirname(File.expand_path($0))
+  end
 end

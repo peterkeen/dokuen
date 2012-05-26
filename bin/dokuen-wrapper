@@ -34,13 +34,21 @@ if entry.nil?
   exit!
 end
 
-# Daemons.daemonize
-#   :app_name => "#{proc}.{index}",
-#   :dir_mode => :normal,
-#   :dir => ENV['DOKUEN_RELEASE_DIR'] + "/.dokuenprocs",
-#   :log_output => false
-
 log_path = File.join(Dokuen.dir("log", app), "#{proc}.#{index}.log")
+pid_path = File.join(ENV['DOKUEN_RELEASE_DIR'], '.dokuenprocs', "dokuen.#{app}.#{proc}.#{index}.pid")
+puts pid_path
+
+if File.exists?(pid_path)
+  puts "pid file exists at #{pid_path}. aborting."
+  exit! 
+end
+
+Daemons.daemonize(
+  :app_name => "dokuen.#{app}.#{proc}.#{index}",
+  :dir_mode => :normal,
+  :dir => ENV['DOKUEN_RELEASE_DIR'] + "/.dokuenprocs",
+  :log_output => true)
+
 log_file = File.open(log_path, "a")
 
 loop do
@@ -53,11 +61,11 @@ loop do
       next unless data
       ps, message = data.split(",", 2)
       log_file.puts("[#{Time.now.strftime('%Y-%m-%d %H:%M:%S')}][#{ps}] #{message}")
+      log_file.flush
     end
   end
   Process.wait(process.pid)
   thread.exit
   reader.close
   writer.close
-  puts "restarting"
 end

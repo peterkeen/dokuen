@@ -101,44 +101,20 @@ HERE
     desc "create [APP]", "Create a new application."
     def create(app="")
       raise "app name required" if app.nil? || app == ""
-      check_not_app(app)
-      read_env(app)
-      empty_directory(Dokuen.dir("env", app))
-      empty_directory(Dokuen.dir("release", app))
-      empty_directory(Dokuen.dir("build", app))
+
+      Dokuen::Application.new(app).create!
+
       puts "Created new application named #{app}"
       puts "Git remote: #{Dokuen.base_clone_url}:apps/#{app}.git"
-    end
-
-    desc "restart_app [APP]", "Restart an existing app"
-    def restart_app(app="")
-      check_app(app)
-      read_env(app)
-      deploy = Dokuen::Deploy.new(app, '', ENV['DOKUEN_RELEASE_DIR'])
-      deploy.install_launch_daemon
-      deploy.install_nginx_conf
-      puts "App restarted"
-    end
-
-    desc "start_app [APP]", "Start an app", :hide => true
-    def start_app(app="")
-      check_app(app)
-      read_env(app)
-      ENV['PATH'] = "/usr/local/bin:#{ENV['PATH']}"
-      Dir.chdir(ENV['DOKUEN_RELEASE_DIR']) do
-        base_port = ENV['PORT'].to_i - 200
-        scale = ENV['DOKUEN_SCALE'].nil? ? "" : "-c #{ENV['DOKUEN_SCALE']}"
-        Dokuen.sys("foreman start #{scale} -p #{base_port}")
-      end
     end
 
     desc "scale [APP] [SCALE_SPEC]", "Scale an app to the given spec"
     def scale(app="", scale_spec="")
       check_app(app)
       raise "scale spec required" if scale_spec == ""
-      read_env(app)
-      Dokuen.set_env(app, 'DOKUEN_SCALE', scale_spec)
-      restart_app(app)
+      application = Dokuen::Application.current(app)
+      application.set_env(["DOKUEN_SCALE=#{scale_spec}"])
+      application.scale!
       puts "Scaled to #{scale_spec}"
     end
 
@@ -199,19 +175,13 @@ HERE
 
       def set_vars(app)
         vars = options[:vars]
-        vars.each do |var|
-          key, val = var.split(/\=/)
-          Dokuen.set_env(app, key, val)
-        end
+        Dokuen::Application.current(app).set_env(vars)
         puts "Vars set"
       end
 
       def delete_vars(app)
         vars = options[:vars]
-
-        vars.each do |var|
-          Dokuen.rm_env(app, var)
-        end
+        Dokuen::Application.current(app).delete_env(vars)
         puts "Vars removed"
       end
 
