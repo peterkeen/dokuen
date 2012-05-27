@@ -7,6 +7,7 @@ require 'foreman'
 require 'foreman/procfile'
 require 'foreman/process'
 require 'daemons'
+require 'fileutils'
 
 begin
   require 'dokuen'
@@ -43,6 +44,8 @@ if File.exists?(pid_path)
   exit! 
 end
 
+FileUtils.mkdir_p(ENV['DOKUEN_RELEASE_DIR'] + "/.dokuenprocs")
+
 Daemons.daemonize(
   :app_name => "dokuen.#{app}.#{proc}.#{index}",
   :dir_mode => :normal,
@@ -54,6 +57,17 @@ log_file = File.open(log_path, "a")
 loop do
   reader, writer = (IO.method(:pipe).arity == 0 ? IO.pipe : IO.pipe("BINARY"))
   process = Foreman::Process.new(entry, index.to_i, port.to_i)
+
+  Signal.trap("USR2") do
+    process.kill("TERM")
+  end
+
+  Signal.trap("TERM") do
+    process.kill("TERM")
+    File.delete(File.join(Dokuen.dir('ports'), port))
+    exit! 0
+  end
+
   process.run(writer, ENV['DOKUEN_RELEASE_DIR'], {})
   thread = Thread.new do
     loop do
