@@ -6,28 +6,26 @@ require 'erb'
 module Dokuen
   class Deploy
 
-    def initialize(app, rev, release_dir=nil)
+    def initialize(name, rev, release_dir=nil)
       @app = app || app_name_from_env
       @rev = rev
+      @release_dir = release_dir || make_release_dir
+      @prev_application = Dokuen::Application.current(@app)
+
+      @application = Dokuen::Application.new(@app, @release_dir)
+      @application.check_exists
+      @application.read_env
+
       ENV['GIT_DIR'] = nil
-      ENV['PATH'] = "/usr/local/bin:#{ENV['PATH']}"
-      if release_dir
-        @release_dir = release_dir
-      end
     end
 
     def run
-      read_app_env
       make_dirs
       clone
       build
-      install_runner
+      @application.scale!
       install_web_conf
-    end
-
-    def read_app_env
-      Dokuen.read_env('_common')
-      Dokuen.read_env(@app)
+      @prev_application.shutdown!
     end
 
     def make_dirs
@@ -67,15 +65,6 @@ module Dokuen
       end
     end
 
-    def install_runner
-      t = ERB.new(Dokuen::Template.launch_daemon)
-      plist_path = File.join(release_dir, "dokuen.#{@app}.plist")
-      File.open(plist_path, "w+") do |f|
-        f.write(t.result(binding))
-      end
-      Dokuen.sys("sudo /usr/local/bin/dokuen_install_launchdaemon #{plist_path}")
-    end
-
     def install_web_conf
       t = ERB.new(Dokuen::Template.nginx)
       File.open(File.join(nginx_dir, "#{@app}.#{base_domain}.conf"), "w+") do |f|
@@ -104,9 +93,9 @@ module Dokuen
       @git_dir || Dir.getwd
     end
 
-    def release_dir
-      @now = Time.now().utc().strftime("%Y%m%dT%H%M%S")
-      @release_dir ||= File.join(Dokuen.dir('release', @app), @now)
+    def make_release_dir
+      now = Time.now().utc().strftime("%Y%m%dT%H%M%S")
+      return File.join(Dokuen.dir('release', @app), now)
     end
 
     def cache_dir

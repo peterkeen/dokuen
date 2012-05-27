@@ -1,6 +1,7 @@
 require 'dokuen/cli'
 require 'dokuen/deploy'
 require 'dokuen/config'
+require 'dokuen/application'
 
 module Dokuen
   def self.dir(name, app=nil)
@@ -45,7 +46,21 @@ module Dokuen
     File.exists?(Dokuen.dir('env', name))
   end
 
-  def self.bin_path
+  def self.bin_dir
     File.dirname(File.expand_path($0))
+  end
+
+  def self.reserve_port
+    ports_dir = Dokuen.dir('ports')
+    port_range = Dokuen::Config.instance.max_port - Dokuen::Config.instance.min_port
+    1000.times do
+      port = rand(port_range) + Dokuen::Config.instance.min_port
+      path = File.join(ports_dir, port.to_s)
+      if not File.exists?(path)
+        FileUtils.touch(path)
+        return port
+      end
+    end
+    raise "Could not find free port!"
   end
 end

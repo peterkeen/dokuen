@@ -11,7 +11,17 @@ module Dokuen
     end
 
     def exists?
-      Dokuen.app_exists(name)
+      Dokuen.app_exists?(name)
+    end
+
+    def check_exists
+      exists? or raise "Application #{name} does not exist"
+    end
+
+    def clean!
+      files = Dir.glob("#{release}/*")
+      puts files
+#      File.delete(*files)
     end
 
     def create!
@@ -26,27 +36,30 @@ module Dokuen
     end
 
     def scale!
+      puts "scaling #{name}"
       processes = running_processes
       running_count_by_name = {}
 
       processes.each do |proc, pidfile|
-        proc_name = proc.split('.')[0]
-        count_by_name[proc_name] ||= 0
-        count_by_name[proc_name] += 1
+        proc_name = File.basename(proc).split('.')[0]
+        running_count_by_name[proc_name] ||= 0
+        running_count_by_name[proc_name] += 1
       end
 
       desired_count_by_name = {}
       ENV['DOKUEN_SCALE'].split(',').each do |spec|
         proc_name, count = spec.split('=')
-        desired_count_by_name[proc_name] ||= 0
-        desired_count_by_name[proc_name] += 1
+        desired_count_by_name[proc_name] = count.to_i
       end
+
+      p desired_count_by_name
+      p running_count_by_name
 
       to_start = []
       to_stop = []
 
       desired_count_by_name.each do |proc_name, count|
-        running = running_count_by_name[proc_name]
+        running = running_count_by_name[proc_name] || 0
         if running < count
           (count - running).times do |i|
             index = running + i + 1
@@ -91,6 +104,18 @@ module Dokuen
       end
     end
 
+    def restart!(name=nil, index=nil)
+      running_processes.each do |proc, pidfile|
+        proc_name, i = proc.split('.')
+        next if name && name != proc_name
+        next if index && index != i
+        pid = File.read(pid_file).chomp.to_i rescue nil
+        if pid
+          Process.kill("USR2", pid)
+        end
+      end
+    end
+
     def running_processes
       procs = {}
       Dir.glob("#{release}/.dokuenprocs/*.pid").map do |pidfile|
@@ -98,11 +123,13 @@ module Dokuen
         proc_name = proc_name.gsub("dokuen.#{name}.", '')
         procs[proc_name] = pidfile
       end
+      procs
     end
 
     def set_env(vars)
+      p vars
       vars.each do |var|
-        key, val = var.split(/\=/)
+        key, val = var.split('=', 2)
         Dokuen.set_env(name, key, val)
       end
     end
@@ -115,7 +142,7 @@ module Dokuen
 
     def read_env
       Dokuen.read_env("_common")
-      Dokuen.read_env(app)
+      Dokuen.read_env(name)
     end
 
     def self.current(app)

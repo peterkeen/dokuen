@@ -6,6 +6,8 @@ require 'yaml'
 module Dokuen
   class Cli < Thor
     include Thor::Actions
+
+    class_option :application, :alias => '-A', :desc => "Name of the application to manipulate"
     
     desc "setup", "Set up relevant things. Needs to be run as sudo."
     method_option :gituser, :desc => "Username of git user", :default => 'git'
@@ -65,6 +67,8 @@ HERE
         'base_domain_name' => 'dokuen',
         'git_server'       => `hostname`.chomp,
         'git_user'         => options[:gituser],
+        'min_port'         => 5000,
+        'max_port'         => 6000
       }
 
       File.open("./dokuen.conf", 'w+') do |f|
@@ -98,8 +102,21 @@ HERE
 
     end
 
-    desc "create [APP]", "Create a new application."
-    def create(app="")
+    desc "boot", "Boot up current applications", :hide => true
+    def boot
+      portfiles = Dir.glob("#{Dokuen.dir('ports')}/*")
+      File.delete(*portfiles)
+      Dir.glob("#{Dokuen.dir('env')}/*") do |dir|
+        next if File.basename(dir) == "_common"
+        app = Dokuen::Application.current(File.basename(dir))
+        app.clean!
+        app.scale!
+      end
+    end
+
+    desc "create", "Create a new application."
+    def create
+      app = options[:application]
       raise "app name required" if app.nil? || app == ""
 
       Dokuen::Application.new(app).create!
@@ -108,47 +125,53 @@ HERE
       puts "Git remote: #{Dokuen.base_clone_url}:apps/#{app}.git"
     end
 
-    desc "scale [APP] [SCALE_SPEC]", "Scale an app to the given spec"
-    def scale(app="", scale_spec="")
-      check_app(app)
-      raise "scale spec required" if scale_spec == ""
+    desc "scale", "Scale an app to the given spec"
+    method_option :scale, :desc => "Scale spec", :default => ''
+    def scale
+      scale_spec = options[:scale]
+      app = options[:application]
+      raise "scale spec required" if scale_spec.nil?
       application = Dokuen::Application.current(app)
+      application.check_exists
       application.set_env(["DOKUEN_SCALE=#{scale_spec}"])
+      application.read_env
       application.scale!
       puts "Scaled to #{scale_spec}"
     end
 
-    desc "deploy [APP] [REV]", "Deploy an app for a given revision. Run within git pre-receive.", :hide => true
-    def deploy(app="", rev="")
-      check_app(app)
-      read_env(app)
+    desc "deploy [REV]", "Deploy an app for a given revision. Run within git pre-receive.", :hide => true
+    def deploy(rev="")
+      app = options[:application]
       Dokuen::Deploy.new(app, rev).run
       puts "App #{app} deployed"
     end
 
-    desc "run_command [APP]", "Run a command in the given app's environment"
+    desc "run_command", "Run a command in the given app's environment"
     method_option :command, :aliases => '-C', :desc => "Command to run"
-    def run_command(app="")
-      check_app(app)
-      read_env(app)
+    def run_command
+      app = options[:application]
+      application = Dokuen::Application.current(app)
+      application.check_exists
 
-      ENV['PATH'] = "/usr/local/bin:#{ENV['PATH']}"
       Dir.chdir(ENV['DOKUEN_RELEASE_DIR']) do
         Dokuen.sys("foreman run #{options[:command]}")
       end
     end
 
-    desc "config [APP] [set/delete]", "Add or remove config variables"
+    desc "config [set/delete]", "Add or remove config variables"
     method_option :vars, :aliases => '-V', :desc => "Variables to set or remove", :type => :array
-    def config(app="", subcommand="")
+    def config(subcommand="")
+      app = options[:application]
       check_app(app)
+      application = Dokuen::Application.current(app)
+      vars = options[:vars]
       case subcommand
       when "set"
-        set_vars(app)
-        restart_app(app)
+        application.set_env(vars)
+        application.restart!
       when "delete"
-        delete_vars(app)
-        restart_app(app)
+        application.delete_env(vars)
+        application.restart!
       else
         show_vars(app)
       end
@@ -157,18 +180,21 @@ HERE
     desc "install_buildpack [URL]", "Add a buildpack to the mason config"
     def install_buildpack(url="")
       raise "URL required" unless url != ""
-      Dokuen.sys("/usr/local/bin/mason buildpacks:install #{url}")
+      Dokuen.read_env('_common')
+      Dokuen.sys("mason buildpacks:install #{url}")
     end
 
     desc "remove_buildpack [NAME]", "Remove a buildpack from the mason config"
     def remove_buildpack(name)
       raise "Name required" unless name != ""
-      Dokuen.sys("/usr/local/bin/mason buildpacks:uninstall #{name}")
+      Dokuen.read_env('_common')
+      Dokuen.sys("mason buildpacks:uninstall #{name}")
     end
 
     desc "buildpacks", "List the available buildpacks"
     def buildpacks
-      Dokuen.sys("/usr/local/bin/mason buildpacks")
+      Dokuen.read_env('_common')
+      Dokuen.sys("mason buildpacks")
     end
 
     no_tasks do
@@ -186,23 +212,10 @@ HERE
       end
 
       def show_vars(app)
-        read_env(app)
+        Dokuen::Application.current(app)
         ENV.each do |key, val|
           puts "#{key}=#{val}"
         end
-      end
-
-      def read_env(app)
-        Dokuen.read_env("_common")
-        Dokuen.read_env(app)
-      end
-
-      def check_app(app)
-        Dokuen.app_exists?(app) or raise "App '#{app}' does not exist!"
-      end
-      
-      def check_not_app(app)
-        not Dokuen.app_exists?(app) or raise "App '#{app}' does not exist!"
       end
 
     end
