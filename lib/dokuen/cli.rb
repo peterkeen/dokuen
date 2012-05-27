@@ -12,6 +12,7 @@ module Dokuen
     desc "setup", "Set up relevant things. Needs to be run as sudo."
     method_option :gituser, :desc => "Username of git user", :default => 'git'
     method_option :gitgroup, :desc => "Group of git user", :default => 'staff'
+    method_option :appuser, :desc => "Username of app user", :default => 'dokuen'
     method_option :gitolite, :desc => "Path to gitolite directory", :default => 'GITUSER_HOME/gitolite'
     def setup
       raise "Must be run as root" unless Process.uid == 0
@@ -23,6 +24,7 @@ module Dokuen
         './env',
         './env/_common',
         './log',
+        './ports',
         './nginx',
         './build',
         './release',
@@ -67,6 +69,7 @@ HERE
         'base_domain_name' => 'dokuen',
         'git_server'       => `hostname`.chomp,
         'git_user'         => options[:gituser],
+        'app_user'         => options[:appuser],
         'min_port'         => 5000,
         'max_port'         => 6000
       }
@@ -94,9 +97,12 @@ In your nginx.conf, add the following to your http section:
 
 include "#{File.expand_path('nginx')}/*.conf";
 
-Run "sudo visudo" and add the following line:
+Run "sudo visudo" and add the following lines:
 
-git	ALL=NOPASSWD: #{current_bin_path}/dokuen_install_launchdaemon, #{current_bin_path}/dokuen_restart_nginx
+User_Alias	APPUSERS = #{options[:app_user]}
+
+git	ALL=(APPUSERS) NOPASSWD: #{File.expand_path('./bin/dokuen-wrapper')}
+git ALL=NOPASSWD: #{current_bin_path}/dokuen_restart_nginx
 
 HERE
 

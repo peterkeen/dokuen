@@ -19,9 +19,10 @@ module Dokuen
     end
 
     def clean!
+      raise "Invalid release '#{release}'" if release == ''
       files = Dir.glob("#{release}/*")
       puts files
-#      File.delete(*files)
+      File.delete(*files)
     end
 
     def create!
@@ -83,7 +84,8 @@ module Dokuen
 
       to_start.each do |proc_name, index|
         port = Dokuen.reserve_port
-        Dokuen.sys("#{Dokuen.bin_dir}/dokuen-wrapper #{name} #{proc_name} #{index} #{port}")
+        appuser = Dokuen::Config.instance.app_user
+        Dokuen.sys("sudo -u #{appuser} #{Dokuen.bin_dir}/dokuen-wrapper #{name} #{proc_name} #{index} #{port}")
       end
 
       to_stop.each do |proc_name, index|
