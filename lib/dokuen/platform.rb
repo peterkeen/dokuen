@@ -1,4 +1,5 @@
 require 'dokuen/platform/mac'
+require 'dokuen/platform/ubuntu'
 
 module Dokuen
   class Platform
@@ -6,6 +7,8 @@ module Dokuen
       case platform
       when 'mac'
         Dokuen::Platform::Mac.new.install_boot_script(dokuen_dir)
+      when 'ubuntu'
+        Dokuen::Platform::Ubuntu.new.install_boot_script(dokuen_dir)
       else
         raise "Unknown platform: #{platform}"
       end
