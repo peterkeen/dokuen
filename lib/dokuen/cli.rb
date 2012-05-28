@@ -102,10 +102,10 @@ include "#{File.expand_path('nginx')}/*.conf";
 
 Run "sudo visudo" and add the following lines:
 
-User_Alias	APPUSERS = #{options[:app_user]}
+Runas_Alias	APPUSERS = #{options[:appuser]}
 
 git	ALL=(APPUSERS) NOPASSWD: #{File.expand_path('./bin/dokuen-wrapper')}
-git ALL=NOPASSWD: #{current_bin_path}/dokuen_restart_nginx
+git	ALL=NOPASSWD: #{current_bin_path}/dokuen_restart_nginx
 
 HERE
 
