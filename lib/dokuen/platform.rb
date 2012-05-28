@@ -2,7 +2,7 @@ require 'dokuen/platform/mac'
 require 'dokuen/platform/ubuntu'
 
 module Dokuen
-  class Platform
+  module Platform
     def self.install_boot_script(dokuen_dir, platform)
       case platform
       when 'mac'
