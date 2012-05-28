@@ -14,6 +14,7 @@ module Dokuen
     method_option :gitgroup, :desc => "Group of git user", :default => 'staff'
     method_option :appuser, :desc => "Username of app user", :default => 'dokuen'
     method_option :gitolite, :desc => "Path to gitolite directory", :default => 'GITUSER_HOME/gitolite'
+    method_option :platform, :desc => "Which platform to install. Can be 'mac', 'ubuntu', or 'centos'", :default => 'mac'
     def setup
       raise "Must be run as root" unless Process.uid == 0
 
@@ -73,6 +74,8 @@ HERE
         'min_port'         => 5000,
         'max_port'         => 6000
       }
+
+      Dokuen::Platform.install_boot_script(Dir.getwd, options[:platform])
 
       File.open("./dokuen.conf", 'w+') do |f|
         YAML.dump(config, f)
