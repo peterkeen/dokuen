@@ -2,6 +2,7 @@ require 'dokuen/cli'
 require 'dokuen/deploy'
 require 'dokuen/config'
 require 'dokuen/application'
+require 'dokuen/platform'
 
 module Dokuen
   def self.dir(name, app=nil)
