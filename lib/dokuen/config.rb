@@ -1,30 +1,23 @@
-require 'yaml'
-require 'singleton'
+require "yaml"
 
-module Dokuen
-  class Config
-    include Singleton
+class Dokuen::Config
+  def initialize(path)
+    @path = path
+    @config = {}
+    read_config
+  end
 
-    def initialize
-      fname = determine_config_file_name
-      if File.exists?(fname)
-        @config = YAML.load_file(fname)
-      else
-        @config = {}
-      end
-    end
+  def read_config
+    @config = YAML.load(File.read(@path))
+  end
 
-    def determine_config_file_name
-      File.dirname(File.expand_path($0)) + '/../dokuen.conf'
-    end
-
-    def method_missing(m, *args, &block)
-      str_meth = m.to_s
-      if @config.has_key? str_meth
-        @config[str_meth]
-      else
-        super
-      end
+  def method_missing(m, *args, &block)
+    str_meth = m.to_s
+    if @config.has_key? str_meth
+      @config[str_meth]
+    else
+      super
     end
   end
 end
+

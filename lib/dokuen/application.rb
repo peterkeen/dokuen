@@ -1,64 +1,141 @@
+require 'tmpdir'
 require 'fileutils'
+require 'time'
 
-module Dokuen
-  class Application
+class Dokuen::Application
 
-    attr_reader :name, :release
+  attr_reader :name, :config
 
-    def initialize(name, release)
-      @name = name
-      @release = release
-    end
+  def initialize(name, config)
+    @name = name
+    @config = config
+  end
 
-    def exists?
-      Dokuen.app_exists?(name)
-    end
-
-    def check_exists
-      exists? or raise "Application #{name} does not exist"
-    end
-
-    def clean!
-      raise "Invalid release '#{release}'" if release == ''
-      files = Dir.glob("#{release}/*")
-      puts files
-      File.delete(*files)
-    end
-
-    def create!
-      if exists?
-        raise "App #{name} already exists"
+  def get_env(var)
+    with_app_dir do
+      env_path = File.join("env", var)
+      if File.exists?(env_path)
+        return File.read(env_path)
+      else
+        return nil
       end
-      
-      FileUtils.mkdir_p(Dokuen.dir("env", name))
-      FileUtils.mkdir_p(Dokuen.dir("release", name))
-      FileUtils.mkdir_p(Dokuen.dir("build", name))
-      FileUtils.mkdir_p(Dokuen.dir("logs", name))
+    end
+  end
+
+  def set_env(var, val)
+    with_app_dir do
+      env_path = File.join("env", var)
+      File.open(env_path, "w+") do |f|
+        f.write(val)
+      end
+    end
+  end
+
+  def delete_env(var)
+    with_app_dir do
+      File.delete(File.join("env", var)) rescue nil
+    end
+  end
+
+  def env
+    vars = read_env_dir("#{config.dokuen_dir}/env")
+    with_app_dir do
+      vars.merge!(read_env_dir('env'))
+      with_current_release do
+        File.open(".env") do |f|
+          f.lines.each do |line|
+            key, val = line.split('=', 2)
+            vars[key] = val
+          end
+        end
+      end
+    end
+    vars
+  end
+
+  def create
+    Dir.chdir(File.join(config.dokuen_dir, 'apps')) do
+      if File.exists?(name)
+        raise "Application #{name} exists!"
+      end
+
+      FileUtils.mkdir_p(name)
+      with_app_dir do
+        dirs = [
+          'releases',
+          'env',
+          'logs',
+          'build'
+        ]
+        FileUtils.mkdir_p(dirs)
+      end
+    end
+  end
+
+  def deploy(revision)
+    git_dir = Dir.getwd
+
+    with_app_dir do
+      now = Time.now().utc().strftime("%Y%m%dT%H%M%S")
+      release_dir = "releases/#{now}"
+      clone_dir = clone(git_dir, revision)
+
+      buildpack = get_env('BUILDPACK_URL')
+      if buildpack
+        buildpack = "-b #{buildpack}"
+      else
+        buildpack = ''
+      end
+
+      sys("mason build #{clone_dir} #{buildpack} -o #{release_dir} -c build")
+
+      hook = get_env('DOKUEN_AFTER_BUILD')
+      if hook
+        sys("foreman run #{hook}")
+      end
+
+      if File.symlink?("previous")
+        File.unlink("previous")
+        File.symlink(File.readlink("current"), "previous")
+      end
+
+      if File.symlink?("current")
+        File.unlink("current")
+      end
+
+      File.symlink(File.expand_path(release_dir), "current")
     end
 
-    def scale!
-      puts "scaling #{name}"
+    @ports = scale
+    install_nginx_config
+    if File.symlink?("previous")
+      shutdown(File.readlink("previous"))
+    end
+  end
+
+  def scale
+    with_current_release do
       processes = running_processes
       running_count_by_name = {}
-
+  
       processes.each do |proc, pidfile|
-        proc_name = File.basename(proc).split('.')[0]
+        proc_name = proc.split('.')[0]
         running_count_by_name[proc_name] ||= 0
         running_count_by_name[proc_name] += 1
       end
-
+  
       desired_count_by_name = {}
-      ENV['DOKUEN_SCALE'].split(',').each do |spec|
-        proc_name, count = spec.split('=')
-        desired_count_by_name[proc_name] = count.to_i
+      scale_spec = get_env('DOKUEN_SCALE')
+      if scale_spec
+        scale_spec.split(',').each do |spec|
+          proc_name, count = spec.split('=')
+          desired_count_by_name[proc_name] = count.to_i
+        end
       end
-
-      p desired_count_by_name
-      p running_count_by_name
-
+  
       to_start = []
       to_stop = []
-
+  
       desired_count_by_name.each do |proc_name, count|
         running = running_count_by_name[proc_name] || 0
         if running < count
@@ -73,7 +150,7 @@ module Dokuen
           end
         end
       end
-
+  
       running_count_by_name.each do |proc_name, count|
         if not desired_count_by_name.has_key?(proc_name)
           count.times do |i|
@@ -81,13 +158,17 @@ module Dokuen
           end
         end
       end
-
+  
+      ports = []
+  
       to_start.each do |proc_name, index|
         port = Dokuen.reserve_port
-        appuser = Dokuen::Config.instance.app_user
-        Dokuen.sys("sudo -u #{appuser} #{Dokuen.bin_dir}/dokuen-wrapper #{name} #{proc_name} #{index} #{port}")
+        if proc_name == 'web'
+          ports << port
+        end
+        Dokuen::Wrapper.new(Dir.getwd, self, proc_name, index, port).run!
       end
-
+  
       to_stop.each do |proc_name, index|
         pid_file = processes["#{proc_name}.#{index}"]
         pid = File.read(pid_file).chomp.to_i rescue nil
@@ -95,63 +176,83 @@ module Dokuen
           Process.kill("TERM", pid)
         end
       end
+      ports
     end
+  end
 
-    def shutdown!
+  def shutdown(release)
+    with_release_dir(release) do
       running_processes.each do |proc, pidfile|
-        pid = File.read(pid_file).chomp.to_i rescue nil
+        pid = File.read(pidfile).to_i rescue nil
         if pid
           Process.kill("TERM", pid)
         end
       end
     end
+  end
 
-    def restart!(name=nil, index=nil)
-      running_processes.each do |proc, pidfile|
-        proc_name, i = proc.split('.')
-        next if name && name != proc_name
-        next if index && index != i
-        pid = File.read(pid_file).chomp.to_i rescue nil
-        if pid
-          Process.kill("USR2", pid)
+  def install_nginx_config
+    @ssl_on = get_env('USE_SSL') ? 'on' : 'off'
+    @listen_port = get_env('USE_SSL') ? 443 : 80
+    conf = Dokuen.template('nginx', binding)
+    File.open(File.join(config.dokuen_dir, "nginx", "#{name}.#{config.base_domain}.conf"), "w+") do |f|
+      f.write(conf)
+    end
+
+    sys("sudo #{config.bin_path}/dokuen_restart_nginx")
+  end
+
+private
+
+  def clone(git_dir, revision)
+    dir = Dir.mktmpdir
+    sys("git clone #{git_dir} #{clone_dir}")
+    sys("git checkout -q #{revision}")
+    dir
+  end
+
+  def sys(command)
+    system(command) or raise "Error running command: #{command}"
+  end
+
+  def with_app_dir
+    Dir.chdir(File.join(config.dokuen_dir, 'apps', name)) do
+      yield
+    end
+  end
+
+  def with_release_dir(release)
+    Dir.chdir(release) do
+      yield
+    end
+  end
+
+  def with_current_release
+    with_app_dir do
+      if File.symlink?("current")
+        with_release_dir(File.readlink("current")) do
+          yield
         end
       end
     end
-
-    def running_processes
-      procs = {}
-      Dir.glob("#{release}/.dokuenprocs/*.pid").map do |pidfile|
-        proc_name = File.basename(pidfile).gsub('.pid', '')
-        proc_name = proc_name.gsub("dokuen.#{name}.", '')
-        procs[proc_name] = pidfile
-      end
-      procs
-    end
-
-    def set_env(vars)
-      p vars
-      vars.each do |var|
-        key, val = var.split('=', 2)
-        Dokuen.set_env(name, key, val)
-      end
-    end
-
-    def delete_env(vars)
-      vars.each do |var|
-        Dokuen.rm_env(name, var)
-      end
-    end
-
-    def read_env
-      Dokuen.read_env("_common")
-      Dokuen.read_env(name)
-    end
-
-    def self.current(app)
-      Dokuen.read_env("_common")
-      Dokuen.read_env(app)      
-      self.new(app, ENV['DOKUEN_RELEASE_DIR'])
-    end
-
   end
+
+  def running_processes
+    procs = {}
+    Dir.glob(".dokuenprocs/*.pid").map do |pidfile|
+      proc_name = File.basename(pidfile).gsub('.pid', '')
+      proc_name = proc_name.gsub("dokuen.#{name}.", '')
+      procs[proc_name] = pidfile
+    end
+    procs
+  end
+
+  def read_env_dir(dir)
+    vars = {}
+    Dir.glob("#{dir}/*").each do |key|
+      vars[File.basename(key)] = File.read(key)
+    end
+    vars
+  end
+
 end
