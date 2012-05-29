@@ -1,6 +1,3 @@
 #!/usr/bin/env ruby
 
-require 'rubygems'
-require 'dokuen'
-
-Dokuen.sys("/usr/local/sbin/nginx -s reload")
+system("/usr/local/sbin/nginx -s reload") or raise "Error restarting nginx!"
