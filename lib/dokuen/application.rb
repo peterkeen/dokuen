@@ -206,8 +206,10 @@ private
 
   def clone(git_dir, revision)
     dir = Dir.mktmpdir
-    sys("git clone #{git_dir} #{clone_dir}")
-    sys("git checkout -q #{revision}")
+    Dir.chdir(dir) do 
+      sys("git clone #{git_dir} .")
+      sys("git checkout -q #{revision}")
+    end
     dir
   end
 
