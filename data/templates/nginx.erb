@@ -9,7 +9,7 @@ server {
     listen   [::]:80;
     listen   443 default ssl;
 
-    server_name <%= name %>.<%= config.base_domain %>;
+    server_name <%= name %>.<%= config.base_domain_name %>;
 
     if ($ssl_protocol = "") {
        rewrite ^   https://$server_name$request_uri? permanent;
