@@ -11,7 +11,6 @@ end
 
 if hook != ""
   name = File.basename(ENV['GL_REPO']).gsub(".git", '')
-  ENV['REV'] = rev
-  ENV['APP'] = name
-  system(hook) or raise "Error running pre-hook: #{cmd} returned #{$?}"
+  cmd = "env REV=#{rev} APP=#{name} #{hook}"
+  system(cmd) or raise "Error running pre-hook: #{cmd} returned #{$?}"
 end

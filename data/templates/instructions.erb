@@ -9,7 +9,7 @@ In your gitolite.conf file, add the following:
 repo apps/[a-zA-Z0-9].*
     C = @all
     RW+ = CREATOR
-    config hooks.pre = "sudo -u <%= options[:appuser] %> <%= File.expand_path('./bin/dokuen') %> deploy"
+    config hooks.pre = "<%= File.expand_path('./bin/dokuen-deploy') %>"
 
 In your nginx.conf, add the following to your http section:
 

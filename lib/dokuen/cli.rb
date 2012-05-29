@@ -48,8 +48,9 @@ class Dokuen::CLI < Thor
   desc "deploy", "deploy application", :hide => true
   method_option :rev, :desc => "Revision to deploy"
   def deploy
-    options[:rev] ||= ENV['REV']
-    options[:application] ||= ENV['APP']
+    ENV.each do |k,v|
+      puts "#{k}=#{v}"
+    end
     Dokuen::Application.new(options[:application], @config).deploy(options[:rev])
   end
 
@@ -106,7 +107,9 @@ private
 
   def setup_bin
     @script_path = File.expand_path("bin/dokuen")
+    @deploy_script_path = File.expand_path("bin/dokuen-deploy")
     write_template(@script_path, "bin_command", 0755)
+    write_template(@deploy_script_path, "deploy_command", 0755)
   end
 
   def setup_gitolite
