@@ -1,4 +1,4 @@
 #!/bin/bash
 
-<%= File.expand_path("./bin/dokuen") %> $@
+sudo -u <%= options[:appuser] %> <%= File.expand_path("./bin/dokuen") %> $@
 

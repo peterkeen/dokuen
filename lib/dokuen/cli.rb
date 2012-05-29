@@ -35,9 +35,8 @@ class Dokuen::CLI < Thor
       setup_gitolite
       write_config
       install_boot_script
+      puts Dokuen.template('instructions', binding)
     end
-
-    puts Dokuen.template('instructions', binding)
   end
 
   desc "create", "create application"
@@ -46,9 +45,12 @@ class Dokuen::CLI < Thor
     puts "git remote add dokuen #{@config.git_user}@#{@config.git_server}:apps/#{options[:application]}.git"
   end
 
-  desc "deploy REV", "deploy application", :hide => true
-  def deploy(rev)
-    Dokuen::Application.new(options[:application], @config).deploy(rev)
+  desc "deploy", "deploy application", :hide => true
+  method_option :rev, :desc => "Revision to deploy"
+  def deploy
+    options[:rev] ||= ENV['REV']
+    options[:application] ||= ENV['APP']
+    Dokuen::Application.new(options[:application], @config).deploy(options[:rev])
   end
 
   desc "scale SCALE_SPEC", "scale to the given spec"
