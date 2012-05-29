@@ -48,6 +48,8 @@ class Dokuen::CLI < Thor
   desc "deploy", "deploy application", :hide => true
   method_option :rev, :desc => "Revision to deploy"
   def deploy
+    ENV['GIT_DIR'] = nil
+    ENV['PATH'] = "#{@config.bin_path}:#{ENV['PATH']}"
     ENV.each do |k,v|
       puts "#{k}=#{v}"
     end
