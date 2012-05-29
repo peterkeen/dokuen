@@ -36,6 +36,8 @@ class Dokuen::CLI < Thor
       write_config
       install_boot_script
     end
+
+    puts Dokuen.template('instructions', binding)
   end
 
   desc "create", "create application"

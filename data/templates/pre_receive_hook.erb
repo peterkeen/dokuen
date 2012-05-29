@@ -1,0 +1,17 @@
+#!/usr/bin/env ruby
+hook = `git config hooks.pre`.chomp
+
+rev = nil
+
+STDIN.each do |line|
+  parts = line.split(/\s/)
+  next if parts[2] != "refs/heads/master"
+  rev = parts[1]
+end
+
+if hook != ""
+  name = File.basename(ENV['GL_REPO']).gsub(".git", '')
+  ENV['REV'] = rev
+  ENV['APP'] = name
+  system(hook) or raise "Error running pre-hook: #{cmd} returned #{$?}"
+end

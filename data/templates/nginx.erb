@@ -1,0 +1,21 @@
+upstream <%= name %> {
+    <% @ports.each do |port| %>
+    server localhost:<%= port %>;
+    <% end %>
+}
+
+server {
+    listen   80;
+    listen   [::]:80;
+    listen   443 default ssl;
+
+    server_name <%= name %>.<%= config.base_domain %>;
+
+    if ($ssl_protocol = "") {
+       rewrite ^   https://$server_name$request_uri? permanent;
+    }
+
+    location / {
+        proxy_pass http://<%= name %>;
+    }
+}
