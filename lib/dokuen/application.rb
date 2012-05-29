@@ -162,7 +162,7 @@ class Dokuen::Application
       ports = []
   
       to_start.each do |proc_name, index|
-        port = Dokuen.reserve_port
+        port = reserve_port
         if proc_name == 'web'
           ports << port
         end
@@ -255,6 +255,20 @@ private
       vars[File.basename(key)] = File.read(key)
     end
     vars
+  end
+
+  def reserve_port
+    ports_dir = config.dokuen_dir + "/ports"
+    port_range = config.max_port - config.min_port
+    1000.times do
+      port = rand(port_range) + config.min_port
+      path = File.join(ports_dir, port.to_s)
+      if not File.exists?(path)
+        FileUtils.touch(path)
+        return port
+      end
+    end
+    raise "Could not find free port!"
   end
 
 end
