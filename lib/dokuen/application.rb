@@ -195,7 +195,7 @@ class Dokuen::Application
     @ssl_on = get_env('USE_SSL') ? 'on' : 'off'
     @listen_port = get_env('USE_SSL') ? 443 : 80
     conf = Dokuen.template('nginx', binding)
-    File.open(File.join(config.dokuen_dir, "nginx", "#{name}.#{config.base_domain}.conf"), "w+") do |f|
+    File.open(File.join(config.dokuen_dir, "nginx", "#{name}.#{config.base_domain_name}.conf"), "w+") do |f|
       f.write(conf)
     end
 
