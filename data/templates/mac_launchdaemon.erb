@@ -6,12 +6,14 @@
   <string>info.bugpslat.dokuen</string>
   <key>ProgramArguments</key>
   <array>
-    <string><%= @current_bin_path %>/dokuen</string>
+    <string><%= File.expand_path("./bin/dokuen") %></string>
     <string>boot</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
   <key>WorkingDirectory</key>
-  <string><%= @current_bin_path %></string>
+  <string><%= File.expand_path(".") %></string>
+  <key>UserName</key>
+  <string<%= options[:appuser] %></string>
 </dict>
 </plist>
