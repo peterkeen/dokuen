@@ -88,6 +88,15 @@ class Dokuen::CLI < Thor
     end
   end
 
+  desc "boot", "Scale all of the current applications"
+  def boot
+    Dir.glob("#{@config.dokuen_dir}/apps/*") do |appdir|
+      next if File.basename(appdir)[0] == '.'
+      app = Dokuen::Application.new(File.basename(appdir), @config)
+      app.scale
+    end
+  end
+
 private
 
   def setup_dirs
