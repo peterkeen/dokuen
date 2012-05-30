@@ -1,3 +1,4 @@
+<% if @ports.length > 0 %>
 upstream <%= name %> {
     <% @ports.each do |port| %>
     server localhost:<%= port %>;
@@ -6,7 +7,6 @@ upstream <%= name %> {
 
 server {
     listen   80;
-    listen   [::]:80;
     listen   443 default ssl;
 
     server_name <%= name %>.<%= config.base_domain_name %>;
@@ -19,3 +19,4 @@ server {
         proxy_pass http://<%= name %>;
     }
 }
+<% end %>

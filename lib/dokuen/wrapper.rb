@@ -4,14 +4,14 @@ require 'foreman/process'
 
 class Dokuen::Wrapper
 
-  attr_reader :release_dir, :app, :proc, :index, :port
+  attr_reader :release_dir, :app, :proc, :index, :portfile
 
-  def initialize(release_dir, app, proc, index, port)
-    @release_dir = release_dir,
-    @app = app,
+  def initialize(app, proc, index, portfile)
+    @release_dir = Dir.getwd
+    @app = app
     @proc = proc
     @index = index
-    @port = port
+    @portfile = portfile
   end
 
   def run!
@@ -23,7 +23,7 @@ class Dokuen::Wrapper
   end
 
   def procname
-    "dokuen.#{app.env}.#{proc}.#{index}"
+    "dokuen.#{app.name}.#{proc}.#{index}"
   end
 
   def procdir
@@ -42,9 +42,13 @@ class Dokuen::Wrapper
     File.join(procdir, "#{procname}.err")
   end
 
+  def port
+    File.basename(portfile).to_i
+  end
+
   def daemonize!
-    pidfile = File.join(release_dir, '.dokuenprocs', "#{procname}.pid")
-    raise "Process already running!" if File.exists?(pidfile)
+    pf = File.join(pidfile)
+    raise "Process already running!" if File.exists?(pf)
 
     return unless do_fork.nil?
     write_pidfile
@@ -71,7 +75,7 @@ class Dokuen::Wrapper
 
   def do_fork
     raise 'first fork failed' if (pid = fork) == -1
-    return unless pid.nil?
+    exit unless pid.nil?
     Process.setsid
     raise 'second fork failed' if (pid = fork) == -1
     exit unless pid.nil?
@@ -85,16 +89,22 @@ class Dokuen::Wrapper
 
   def run_loop
     reader, writer = (IO.method(:pipe).arity == 0 ? IO.pipe : IO.pipe("BINARY"))
+    procfile = Foreman::Procfile.new("Procfile")
+    entry = procfile[proc]
     process = Foreman::Process.new(entry, index.to_i, port.to_i)
-    log_file = File.open(Dokuen.dir('logs', procname), 'a')
+    log_path = "../../logs/#{procname}"
+    log_file = File.open(log_path, 'a')
 
     Signal.trap("USR2") do
       process.kill("TERM")
     end
 
     Signal.trap("TERM") do
-      process.kill("TERM")
-      File.delete(File.join(Dokuen.dir('ports'), port)) rescue nil
+      if not process.kill(9)
+        raise "Failed to kill process #{process.pid}"
+      end
+      File.delete(pidfile)
+      File.delete("../../../../ports/#{port}")
       exit! 0
     end
 

@@ -45,7 +45,7 @@ class Dokuen::Application
         File.open(".env") do |f|
           f.lines.each do |line|
             key, val = line.split('=', 2)
-            vars[key] = val
+            vars[key] = val.chomp
           end
         end
       end
@@ -88,6 +88,7 @@ class Dokuen::Application
       end
 
       sys("mason build #{clone_dir} #{buildpack} -o #{release_dir} -c build")
+      Dir.mkdir("#{release_dir}/.dokuen")
 
       hook = get_env('DOKUEN_AFTER_BUILD')
       if hook
@@ -106,14 +107,14 @@ class Dokuen::Application
       File.symlink(File.expand_path(release_dir), "current")
     end
 
-    @ports = scale
-    install_nginx_config
+    scale
     if File.symlink?("previous")
       shutdown(File.readlink("previous"))
     end
   end
 
   def scale
+    puts "Scaling..."
     with_current_release do
       processes = running_processes
       running_count_by_name = {}
@@ -160,23 +161,24 @@ class Dokuen::Application
       end
   
       ports = []
-  
+
       to_start.each do |proc_name, index|
         port = reserve_port
         if proc_name == 'web'
           ports << port
         end
-        Dokuen::Wrapper.new(Dir.getwd, self, proc_name, index, port).run!
+        fork do
+          Dokuen::Wrapper.new(self, proc_name, index, File.join(config.dokuen_dir, 'ports', port.to_s)).run!
+        end
       end
   
       to_stop.each do |proc_name, index|
         pid_file = processes["#{proc_name}.#{index}"]
-        pid = File.read(pid_file).chomp.to_i rescue nil
-        if pid
-          Process.kill("TERM", pid)
-        end
+        pid = File.read(pid_file).chomp.to_i
+        Process.kill("TERM", pid)
       end
-      ports
+      @ports = ports
+      install_nginx_config
     end
   end
 
@@ -192,6 +194,7 @@ class Dokuen::Application
   end
 
   def install_nginx_config
+    puts "Installing nginx config"
     @ssl_on = get_env('USE_SSL') ? 'on' : 'off'
     @listen_port = get_env('USE_SSL') ? 443 : 80
     conf = Dokuen.template('nginx', binding)
@@ -241,7 +244,7 @@ private
 
   def running_processes
     procs = {}
-    Dir.glob(".dokuenprocs/*.pid").map do |pidfile|
+    Dir.glob(".dokuen/*.pid").map do |pidfile|
       proc_name = File.basename(pidfile).gsub('.pid', '')
       proc_name = proc_name.gsub("dokuen.#{name}.", '')
       procs[proc_name] = pidfile
@@ -252,7 +255,7 @@ private
   def read_env_dir(dir)
     vars = {}
     Dir.glob("#{dir}/*").each do |key|
-      vars[File.basename(key)] = File.read(key)
+      vars[File.basename(key)] = File.read(key).chomp
     end
     vars
   end
