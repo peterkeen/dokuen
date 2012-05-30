@@ -160,13 +160,8 @@ class Dokuen::Application
         end
       end
   
-      ports = []
-
       to_start.each do |proc_name, index|
         port = reserve_port
-        if proc_name == 'web'
-          ports << port
-        end
         fork do
           Dokuen::Wrapper.new(self, proc_name, index, File.join(config.dokuen_dir, 'ports', port.to_s)).run!
         end
@@ -174,10 +169,9 @@ class Dokuen::Application
   
       to_stop.each do |proc_name, index|
         pid_file = processes["#{proc_name}.#{index}"]
-        pid = File.read(pid_file).chomp.to_i
+        pid = YAML.load(File.read(pid_file))['pid']
         Process.kill("TERM", pid)
       end
-      @ports = ports
       install_nginx_config
     end
   end
@@ -195,6 +189,7 @@ class Dokuen::Application
 
   def install_nginx_config
     puts "Installing nginx config"
+    sleep 2
     @ssl_on = get_env('USE_SSL') ? 'on' : 'off'
     @listen_port = get_env('USE_SSL') ? 443 : 80
     conf = Dokuen.template('nginx', binding)
@@ -274,4 +269,11 @@ private
     raise "Could not find free port!"
   end
 
+  def ports
+    _ports = []
+    running_processes.each do |proc_name, pidfile|
+      _ports << YAML.load(File.read(pidfile))['port']
+    end
+    _ports
+  end
 end

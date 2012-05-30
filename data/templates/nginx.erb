@@ -1,6 +1,6 @@
-<% if @ports.length > 0 %>
+<% if ports.length > 0 %>
 upstream <%= name %> {
-    <% @ports.each do |port| %>
+    <% ports.each do |port| %>
     server localhost:<%= port %>;
     <% end %>
 }

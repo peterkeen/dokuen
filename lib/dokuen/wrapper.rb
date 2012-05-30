@@ -65,7 +65,7 @@ class Dokuen::Wrapper
 
   def write_pidfile
     File.open(pidfile, "w+") do |f|
-      f.write(Process.pid)
+      f.write(YAML.dump({'pid' => Process.pid, 'port' => port}))
     end
   end
 
