@@ -200,6 +200,15 @@ class Dokuen::Application
     sys("sudo #{config.bin_path}/dokuen_restart_nginx")
   end
 
+  def run_command(args)
+    with_current_release do
+      env.each do |k,v|
+        ENV[k] = v
+      end
+      sys("#{config.bin_path}/foreman run #{args.join(" ")}")
+    end
+  end
+
 private
 
   def clone(git_dir, revision)

@@ -112,6 +112,12 @@ class Dokuen::CLI < Thor
     system("#{@config.bin_path}/mason buildpacks")
   end
 
+  desc "run_command COMMAND", "Run a command in the current release"
+  def run_command(*args)
+    app = Dokuen::Application.new(options[:application], @config)
+    app.run_command(args)
+  end
+
 private
 
   def setup_dirs
