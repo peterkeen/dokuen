@@ -60,7 +60,7 @@ class Dokuen::CLI < Thor
   def scale(spec)
     app = Dokuen::Application.new(options[:application], @config)
     app.set_env('DOKUEN_SCALE', spec)
-    
+    app.scale
   end
 
   desc "config", "show the config for the given app"
