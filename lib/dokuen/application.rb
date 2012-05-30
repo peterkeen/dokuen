@@ -209,6 +209,14 @@ class Dokuen::Application
     end
   end
 
+  def clean
+    with_current_release do
+      Dir.glob(".dokuen/*.pid") do |f|
+        File.delete(f)
+      end
+    end
+  end
+
 private
 
   def clone(git_dir, revision)

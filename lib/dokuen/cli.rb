@@ -93,6 +93,7 @@ class Dokuen::CLI < Thor
     Dir.glob("#{@config.dokuen_dir}/apps/*") do |appdir|
       next if File.basename(appdir)[0] == '.'
       app = Dokuen::Application.new(File.basename(appdir), @config)
+      app.clean
       app.scale
     end
   end
