@@ -97,6 +97,21 @@ class Dokuen::CLI < Thor
     end
   end
 
+  desc "install_buildpack URL", "Add a buildpack to the mason config"
+  def install_buildpack(url)
+    system("#{@config.bin_path}/mason buildpacks:install #{url}")
+  end
+
+  desc "remove_buildpack NAME", "Remove a buildpack from the mason config"
+  def remove_buildpack(name)
+    system("#{@config.bin_path}/mason buildpacks:uninstall #{name}")
+  end
+
+  desc "buildpacks", "List the available buildpacks"
+  def buildpacks
+    system("#{@config.bin_path}/mason buildpacks")
+  end
+nt
 private
 
   def setup_dirs

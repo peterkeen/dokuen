@@ -54,9 +54,8 @@ This will ask you a few questions, set up a few directories, and install a few u
 ## Creating an App
 
 ```
-$ ssh git@<your_host> dokuen create <name>
-Creating new application named <name>
-Remote: git@<your_host>:<name>.git
+$ ssh git@<your_host> dokuen create --application=<name>
+git@<your_host>:<name>.git
 
 $ git remote add dokuen git@<your_host>:<name>.git
 ```
@@ -64,7 +63,7 @@ $ git remote add dokuen git@<your_host>:<name>.git
 ### Add some environment variables
 
 ```
-$ ssh git@<your_host> dokuen config <name> set -V BUILDPACK_URL="https://github.com/heroku/heroku-buildpack-ruby.git" PORT=12345 DOKUEN_SCALE="web=1"
+$ ssh git@<your_host> dokuen config_set -V BUILDPACK_URL="https://github.com/heroku/heroku-buildpack-ruby.git" DOKUEN_SCALE="web=1" --application=<name>
 ```
 
 ### Deploy
@@ -80,12 +79,10 @@ $ open http://<your_host>:12345/
 
 ## Available "app" Sub-commands
 
-* `create <name>`
-* `config <name>`
-  * `set <key>=<value> ...`
-  * `delete <key> ...`
-* `restart_app <name>`
-* `scale <name> <type>=<num>`
+* `create`
+* `config_set <key>=<value> ...`
+* `config_delete <key> ...`
+* `scale <type>=<num>...`
 * `buildpacks`
 * `install_buildpack <url>`
 * `remove_buildpack <name>`
@@ -103,7 +100,8 @@ include /usr/local/var/dokuen/nginx/*.conf;
 Then, force a restart of your app:
 
 ```
-$ ssh git@<your_host> dokuen restart_app <name>
+$ ssh git@<your_host> dokuen scale web=0 --application=<name>
+$ ssh git@<your_host> dokuen scale web=1 --application=<name>
 ```
 
 ## Rails
