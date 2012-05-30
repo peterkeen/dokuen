@@ -111,7 +111,7 @@ class Dokuen::CLI < Thor
   def buildpacks
     system("#{@config.bin_path}/mason buildpacks")
   end
-nt
+
 private
 
   def setup_dirs
