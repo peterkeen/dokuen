@@ -110,4 +110,11 @@ $ ssh git@<your_host> dokuen scale web=1 --application=<name>
 
 Unfortunately the stock Heroku buildpacks install a vendored node.js compiled for the Heroku platform, which happens to be linux. This doesn't work for Mac, which means you have to use a slightly patched version. This one works with a homebrew-installed node.js: https://github.com/peterkeen/heroku-buildpack-ruby
 
+## License
+
+MIT
+
+## Concact and Development
+
+Fork and send me a pull request. If you'd like to talk about Dokuen there's `#dokuen` on `irc.freenode.net`, as well as a [mailing list](https://groups.google.com/forum/#!forum/dokuen). 
 
