@@ -114,7 +114,7 @@ Unfortunately the stock Heroku buildpacks install a vendored node.js compiled fo
 
 MIT
 
-## Concact and Development
+## Contact and Development
 
 Fork and send me a pull request. If you'd like to talk about Dokuen there's `#dokuen` on `irc.freenode.net`, as well as a [mailing list](https://groups.google.com/forum/#!forum/dokuen). 
 
