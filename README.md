@@ -88,6 +88,8 @@ $ open http://<your_host>:12345/
 * `install_buildpack <url>`
 * `remove_buildpack <name>`
 * `run_command <command>`
+* `shutdown`
+* `restart`
 
 ## DNS Setup
 
