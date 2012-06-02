@@ -176,13 +176,27 @@ class Dokuen::Application
     end
   end
 
-  def shutdown(release)
+  def shutdown(release=nil)
+    if release.nil?
+      with_app_dir do
+        release = File.readlink("current")
+      end
+    end
+
     with_release_dir(release) do
       running_processes.each do |proc, pidfile|
-        pid = File.read(pidfile).to_i rescue nil
-        if pid
-          Process.kill("TERM", pid)
-        end
+        pid = YAML.load(File.read(pidfile))['pid']
+        Process.kill("TERM", pid)
+      end
+    end
+  end
+
+  def restart
+    with_current_release do
+      running_processes.each do |proc, pidfile|
+        pid = YAML.load(File.read(pidfile))['pid']
+        puts "Sending USR2 to pid #{pid}"
+        Process.kill("USR2", pid)
       end
     end
   end

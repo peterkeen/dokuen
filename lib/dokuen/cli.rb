@@ -78,6 +78,13 @@ class Dokuen::CLI < Thor
       key, val = var.chomp.split('=', 2)
       app.set_env(key, val)
     end
+    app.restart
+  end
+
+  desc "restart", "restart all instances of the application"
+  def restart
+    app = Dokuen::Application.new(options[:application], @config)
+    app.restart
   end
 
   desc "config_delete VARS", "delete some config variables"
@@ -86,15 +93,25 @@ class Dokuen::CLI < Thor
     vars.each do |var|
       app.delete_env(var)
     end
+    app.restart
   end
 
-  desc "boot", "Scale all of the current applications"
+  desc "boot", "Scale all of the current applications", :hide => true
   def boot
     Dir.glob("#{@config.dokuen_dir}/apps/*") do |appdir|
       next if File.basename(appdir)[0] == '.'
       app = Dokuen::Application.new(File.basename(appdir), @config)
       app.clean
       app.scale
+    end
+  end
+
+  desc "shutdown", "Shut down all applications", :hide => true
+  def shutdown
+    Dir.glob("#{@config.dokuen_dir}/apps/*") do |appdir|
+      next if File.basename(appdir)[0] == '.'
+      app = Dokuen::Application.new(File.basename(appdir), @config)
+      app.shutdown
     end
   end
 
