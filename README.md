@@ -1,6 +1,7 @@
 # Dokuen, a Personal App Platform
 
-Dokuen is a "personal app platform". It's the same idea as all of these PaaS and IaaS services out there, except you host it on your own machine. It's specifically for hosting multiple 12-factor applications on one Mac. [Here](http://bugsplat.info/2012-05-17-dokuen-a-personal-app-platform.html) is an article that explains my motivations.
+Dokuen is a "personal app platform". It's the same idea as all of these PaaS and IaaS services out there, except you host it on
+your own machine. Currently, Dokuen supports Mac and Ubuntu. [Here](http://bugsplat.info/2012-05-17-dokuen-a-personal-app-platform.html) is an article that explains my motivations.
 
 ## Requirements
 
@@ -29,7 +30,7 @@ gem install dokuen
 
 ### Step 2
 
-Install nginx using homebrew:
+Install nginx using homebrew or your distro's package manager:
 
 ```
 $ brew install nginx
@@ -46,7 +47,7 @@ Run this:
 ```
 $ sudo mkdir -p /usr/local/var/dokuen
 $ cd /usr/local/var/dokuen
-$ sudo dokuen setup
+$ sudo dokuen setup .
 ```
 
 This will ask you a few questions, set up a few directories, and install a few useful commands. It'll also show you some things you need to do.
@@ -109,4 +110,11 @@ $ ssh git@<your_host> dokuen scale web=1 --application=<name>
 
 Unfortunately the stock Heroku buildpacks install a vendored node.js compiled for the Heroku platform, which happens to be linux. This doesn't work for Mac, which means you have to use a slightly patched version. This one works with a homebrew-installed node.js: https://github.com/peterkeen/heroku-buildpack-ruby
 
+## License
+
+MIT
+
+## Contact and Development
+
+Fork and send me a pull request. If you'd like to talk about Dokuen there's `#dokuen` on `irc.freenode.net`, as well as a [mailing list](https://groups.google.com/forum/#!forum/dokuen). 
 
