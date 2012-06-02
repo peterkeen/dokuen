@@ -16,7 +16,6 @@ class Dokuen::Wrapper
 
   def run!
     return if daemonize! == nil
-    load_env
     loop do
       run_loop
     end
@@ -88,6 +87,7 @@ class Dokuen::Wrapper
   end
 
   def run_loop
+    load_env
     reader, writer = (IO.method(:pipe).arity == 0 ? IO.pipe : IO.pipe("BINARY"))
     procfile = Foreman::Procfile.new("Procfile")
     entry = procfile[proc]
