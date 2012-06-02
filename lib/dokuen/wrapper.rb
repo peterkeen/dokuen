@@ -86,6 +86,10 @@ class Dokuen::Wrapper
     end
   end
 
+  def term_signal
+    app.config.stop_signal rescue 15
+  end
+
   def run_loop
     load_env
     reader, writer = (IO.method(:pipe).arity == 0 ? IO.pipe : IO.pipe("BINARY"))
@@ -96,11 +100,11 @@ class Dokuen::Wrapper
     log_file = File.open(log_path, 'a')
 
     Signal.trap("USR2") do
-      process.kill("TERM")
+      process.kill(term_signal)
     end
 
     Signal.trap("TERM") do
-      if not process.kill(9)
+      if not process.kill(term_signal)
         raise "Failed to kill process #{process.pid}"
       end
       File.delete(pidfile)
