@@ -204,8 +204,6 @@ class Dokuen::Application
   def install_nginx_config
     puts "Installing nginx config"
     sleep 2
-    @ssl_on = get_env('USE_SSL') ? 'on' : 'off'
-    @listen_port = get_env('USE_SSL') ? 443 : 80
     conf = Dokuen.template('nginx', binding)
     File.open(File.join(config.dokuen_dir, "nginx", "#{name}.#{config.base_domain_name}.conf"), "w+") do |f|
       f.write(conf)
@@ -306,4 +304,9 @@ private
     end
     _ports
   end
+
+  def additional_domains
+    (env['ADDITIONAL_DOMAINS'] || '').split(',')
+  end
+
 end
