@@ -309,4 +309,8 @@ private
     (env['ADDITIONAL_DOMAINS'] || '').split(',')
   end
 
+  def use_ssl
+    env['USE_SSL']
+  end
+
 end
