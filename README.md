@@ -8,22 +8,12 @@ your own machine. Currently, Dokuen supports Mac and Ubuntu. [Here](http://bugsp
 * [Gitolite](https://github.com/sitaramc/gitolite)
 * [Nginx](http://wiki.nginx.org/Main)
 
+
 ## Installation
 
 
 ### Step 1
 
-WARNING: At the moment Dokuen needs a custom version of Mason. A patch has been accepted but as
-of now (2012-05-19) there hasn't been a release with this patch. So, install mason:
-
-```
-$ git clone https://github.com/peterkeen/mason
-$ cd mason
-$ gem build mason.gemspec
-$ gem install mason-0.0.11.gem
-```
-
-Then, install dokuen:
 ```
 gem install dokuen
 ```
@@ -50,7 +40,7 @@ $ cd /usr/local/var/dokuen
 $ sudo dokuen setup .
 ```
 
-This will ask you a few questions, set up a few directories, and install a few useful commands. It'll also show you some things you need to do.
+This will ask you a few questions, set up a few directories, and install a few useful commands. It'll also show you some things you need to do. Crucially, you'll need to modify your gitolite config and install it.
 
 ## Creating an App
 
@@ -107,6 +97,33 @@ Then, force a restart of your app:
 $ ssh git@<your_host> dokuen scale web=0 --application=<name>
 $ ssh git@<your_host> dokuen scale web=1 --application=<name>
 ```
+
+
+## How it works
+
+When you run `ssh git@<your_host> dokuen create --application=foo`, Dokuen creates a few directories in it's install directory, setting things up for app deployments. In particular, it creates this structure:
+
+```
+foo/
+    releases/    # timestamped code pushes
+    env/         # environment variables. FILENAME => file contents
+    logs/        # log files, one per process
+    build/       # cache directory for build side-effects like gems
+```
+
+When you run `git push dokuen master`, the following series of events happens:
+
+* If the target git repo does not exist, gitolite creates it
+* git runs the `pre-receive` hook, which invokes `/path/to/dokuen/install/bin/dokuen`, which is a wrapper around dokuen with the correct config file set
+* runs `git archive <git repo> <sha1 of new master branch> > <tmpdir>`
+* invokes `mason` on the tmpdir, building the application into a timestamped subdirectory of `releases`
+* creates a symlink `current` that points at the new timestamped directory
+* creates a symlink `previous` that points at the previous value of `current`
+* spins up the configured number of processes as set using `dokuen scale`
+* writes out a new nginx configuration and restarts nginx
+* shuts down the previous processes
+
+When Dokuen "spins up" a process, it forks the main process, creates a `Dokuen::Wrapper` instance and calls `run!` on it. The wrapper's job is to immediately daemonize and run the command line in the `Procfile` for the given named process, capture logging info, restarting the process if it dies, and forwarding signals to it as appropriate. It writes it's own pid as well as the port it was given at fork-time into a pidfile at `current/.dokuen/dokuen.<appname>.<process_name>.<index>.pid`.
 
 ## Rails
 
