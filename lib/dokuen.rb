@@ -10,6 +10,7 @@ module Dokuen
       raise "Unknown template: #{name}"
     end
   end
+
 end
 
 require "dokuen/cli"
@@ -17,3 +18,4 @@ require "dokuen/config"
 require "dokuen/application"
 require "dokuen/wrapper"
 require "dokuen/platform"
+require "dokuen/shell"
