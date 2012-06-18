@@ -24,9 +24,13 @@ Gem::Specification.new do |s|
   s.test_files = s.files.select {|path| path =~ /^test\/.*.rb/ }
 
   s.add_development_dependency('rake')
+  s.add_development_dependency('rspec')
+  s.add_development_dependency('rspec-mocks')
+
   s.add_dependency('thor')
   s.add_dependency('mason', ">= 0.1.0")
   s.add_dependency('foreman')
+
   
   s.homepage = 'https://github.com/peterkeen/dokuen'
 end
