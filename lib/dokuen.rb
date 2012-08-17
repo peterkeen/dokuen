@@ -13,9 +13,7 @@ module Dokuen
 
 end
 
-require "dokuen/cli"
 require "dokuen/config"
-require "dokuen/application"
-require "dokuen/wrapper"
-require "dokuen/platform"
-require "dokuen/shell"
+require "dokuen/remote"
+require "dokuen/cli"
+

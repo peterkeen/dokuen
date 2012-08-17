@@ -1,223 +1,59 @@
 require "thor"
 require "thor/shell/basic"
-require "yaml"
+require "thor/group"
 
 class Dokuen::CLI < Thor
 
   include Thor::Actions
 
-  def initialize(*args)
-    super(*args)
+  class_option :config, :type => :string, :desc => "Config file"
 
-    if not options[:config].nil?
-      @config = Dokuen::Config.new(options[:config])
-    end
-  end
+  class Remote < Thor
 
-  class_option :application, :type => :string, :desc => "Application name"
-  class_option :config, :type => :string, :desc => "Configuration file"
-  class_option :debug, :type => :boolean, :desc => "Show backtraces"
+    namespace :remote
 
-  desc "setup DIR", "set up dokuen in the given directory"
-  method_option :gituser, :desc => "Username of git user", :default => 'git'
-  method_option :gitgroup, :desc => "Group of git user", :default => 'staff'
-  method_option :appuser, :desc => "Username of app user", :default => 'dokuen'
-  method_option :gitolite, :desc => "Path to gitolite directory", :default => 'GITUSER_HOME/gitolite'
-  method_option :platform, :desc => "Which platform to install. Can be 'mac', 'ubuntu', or 'centos'", :default => 'mac'  
-  def setup(dir)
-
-    @current_script = File.expand_path($0)
-    @current_bin_path = File.dirname(@current_script)
-
-    Dir.chdir(dir) do
-      setup_dirs
-      setup_bin
-      setup_gitolite
-      write_config
-      install_boot_script
-      puts Dokuen.template('instructions', binding)
-    end
-  end
-
-  desc "create", "create application"
-  def create
-    Dokuen::Application.new(options[:application], @config).create
-    puts "git remote add dokuen #{@config.git_user}@#{@config.git_server}:apps/#{options[:application]}.git"
-  end
-
-  desc "deploy", "deploy application", :hide => true
-  method_option :rev, :desc => "Revision to deploy"
-  def deploy
-    ENV['GIT_DIR'] = nil
-    ENV['PATH'] = "#{@config.bin_path}:#{ENV['PATH']}"
-    ENV.each do |k,v|
-      puts "#{k}=#{v}"
-    end
-    Dokuen::Application.new(options[:application], @config).deploy(options[:rev])
-  end
-
-  desc "scale SCALE_SPEC", "scale to the given spec"
-  def scale(spec)
-    app = Dokuen::Application.new(options[:application], @config)
-    app.set_env('DOKUEN_SCALE', spec)
-    app.scale
-  end
-
-  desc "config", "show the config for the given app"
-  def config
-    app = Dokuen::Application.new(options[:application], @config)
-    app.env.each do |key, val|
-      puts "#{key}=#{val}"
-    end
-  end
-
-  desc "config_set VARS", "set some config variables"
-  def config_set(*vars)
-    app = Dokuen::Application.new(options[:application], @config)
-    vars.each do |var|
-      key, val = var.chomp.split('=', 2)
-      app.set_env(key, val)
-    end
-    app.restart
-  end
-
-  desc "restart", "restart all instances of the application"
-  def restart
-    app = Dokuen::Application.new(options[:application], @config)
-    app.restart
-  end
-
-  desc "config_delete VARS", "delete some config variables"
-  def config_delete(*vars)
-    app = Dokuen::Application.new(options[:application], @config)
-    vars.each do |var|
-      app.delete_env(var)
-    end
-    app.restart
-  end
-
-  desc "boot", "Scale all of the current applications", :hide => true
-  def boot
-    Dir.glob("#{@config.dokuen_dir}/apps/*") do |appdir|
-      next if File.basename(appdir)[0] == '.'
-      app = Dokuen::Application.new(File.basename(appdir), @config)
-      app.clean
-      app.scale
-    end
-  end
-
-  desc "shutdown", "Shut down all applications", :hide => true
-  def shutdown
-    Dir.glob("#{@config.dokuen_dir}/apps/*") do |appdir|
-      next if File.basename(appdir)[0] == '.'
-      app = Dokuen::Application.new(File.basename(appdir), @config)
-      app.shutdown
-    end
-  end
-
-  desc "install_buildpack URL", "Add a buildpack to the mason config"
-  def install_buildpack(url)
-    system("#{@config.bin_path}/mason buildpacks:install #{url}")
-  end
-
-  desc "remove_buildpack NAME", "Remove a buildpack from the mason config"
-  def remove_buildpack(name)
-    system("#{@config.bin_path}/mason buildpacks:uninstall #{name}")
-  end
-
-  desc "buildpacks", "List the available buildpacks"
-  def buildpacks
-    system("#{@config.bin_path}/mason buildpacks")
-  end
-
-  desc "run_command COMMAND", "Run a command in the current release"
-  def run_command(*args)
-    app = Dokuen::Application.new(options[:application], @config)
-    app.run_command(args)
-  end
-
-  desc "grant USER", "Grant USER permissions for application"
-  def grant(user)
-    # write a new permissions file with USER in the "shared_with" section
-  end
-
-  desc "revoke USER", "Remove USER permissions for application"
-  def revoke(user)
-    # write a new permissions file without USER in the "shared_with" section
-  end
-
-  desc "addkey USER", "Add a user's public key from stdin"
-  def addkey(user)
-    # read stdin, write key to keys/USER.key, write ~/.ssh/authorized_keys
-  end
-
-  desc "removekey USER", "Remove a user's public key"
-  def removekey(user)
-    # remove keys/USER.key, write ~/.ssh/authorized_keys
-  end
-
-private
-
-  def setup_dirs
-    dirs = [
-      'apps',
-      'env',
-      'perms',
-      'ports',
-      'nginx',
-      'bin'
-    ]
-
-    dirs.each do |dir|
-      empty_directory(File.join(Dir.getwd, dir))
+    def initialize(*args)
+      super(*args)
+      @config = Dokuen::Config.new(options[:config] || "~/.dokuen")
     end
 
-    FileUtils.chown(options[:gituser], options[:gitgroup], dirs)
-    FileUtils.chmod(0777, ['apps', 'ports', 'nginx'])
-  end
-
-  def setup_bin
-    @script_path = File.expand_path("bin/dokuen")
-    @deploy_script_path = File.expand_path("bin/dokuen-deploy")
-    write_template(@script_path, "bin_command", 0755)
-    write_template(@deploy_script_path, "deploy_command", 0755)
-  end
-
-  def setup_gitolite
-    githome = File.expand_path("~#{options[:gituser]}")
-    gitolite = options[:gitolite].gsub('GITUSER_HOME', githome)
-
-    write_template("#{gitolite}/src/commands/dokuen", 'gitolite_command', 0755)
-    write_template("#{githome}/.gitolite/hooks/common/pre-receive", 'pre_receive_hook', 0755)
-  end
-
-  def write_config
-    config = {
-      'base_domain_name' => 'dokuen',
-      'git_server'       => `hostname`.chomp,
-      'git_user'         => options[:gituser],
-      'app_user'         => options[:appuser],
-      'min_port'         => 5000,
-      'max_port'         => 6000,
-      'bin_path'         => @current_bin_path,
-      'dokuen_dir'       => File.expand_path('.')
-    }
-
-    File.open("./dokuen.conf", 'w+') do |f|
-      YAML.dump(config, f)
+    desc "add NAME SPEC", "Add a remote named NAME with spec SPEC (ex: user@hostname:/path/to/dokuen)"
+    def add(name, spec)
+      @config[:remotes][name] = spec
+      @config.write_file
+      say "Added #{name} to #{@config.filename}"
     end
-    
+
+    desc "remove NAME", "Remote the named remote from dokuen config"
+    def remove(name)
+      if @config[:remotes][name].nil?
+        raise Thor::Error.new("#{name} is not a known remote")
+      end
+
+      @config[:remotes].delete(name)
+      @config.write_file
+      say "Removed #{name} from #{@config.filename}"
+    end
+
+    desc "setup NAME", "Setup Dokuen on the named remote"
+    def setup(name)
+      if @config[:remotes][name].nil?
+        raise Thor::Error.new("#{name} is not a known remote")
+      end
+
+      say "Setting up dokuen on #{name}"
+
+      remote = Dokuen::Remote.new(@config[:remotes][name])
+      remote.setup!
+    end
+
+    def self.banner(task, namespace = true, subcommand = false)
+      "#{basename} #{task.formatted_usage(self, true, subcommand)}"
+    end    
+
   end
 
-  def write_template(filename, template, mode=0644)
-    t = Dokuen.template(template, binding)
-    create_file(filename, t)
-    File.chmod(mode, filename)
-  end
-
-  def install_boot_script
-    filename, template_name = Dokuen::Platform.boot_script(options[:platform])
-    write_template(filename, template_name)
-  end
+  register(Remote, 'remote', 'remote <command>', 'Manipulate Dokuen remotes')
 
 end
+
