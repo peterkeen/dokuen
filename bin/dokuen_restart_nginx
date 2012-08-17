@@ -1,3 +1,0 @@
-#!/usr/bin/env ruby
-
-system("/usr/local/sbin/nginx -s reload") or raise "Error restarting nginx!"
