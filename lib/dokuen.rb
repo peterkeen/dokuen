@@ -16,5 +16,6 @@ end
 require "dokuen/config"
 require "dokuen/remote"
 require "dokuen/application"
+require "dokuen/actions"
 require "dokuen/cli"
 

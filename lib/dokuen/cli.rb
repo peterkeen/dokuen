@@ -5,23 +5,19 @@ require "thor/group"
 class Dokuen::CLI < Thor
 
   include Thor::Actions
+  include Dokuen::Actions
 
   class_option :config, :type => :string, :desc => "Config file"
 
   class SubCommand < Thor
+
+    include Dokuen::Actions
 
     no_tasks do
 
       def initialize(*args)
         super(*args)
         @config = Dokuen::Config.new(options[:config] || "~/.dokuen")
-      end
-
-      def verify_remote(remote, create_remote=true)
-        if @config[:remotes][remote].nil?
-          raise Thor::Error.new("#{remote} is not a known remote")
-        end
-        @remote = Dokuen::Remote.new(@config[:remotes][remote]) if create_remote
       end
 
       def self.banner(task, namespace = true, subcommand = false)
