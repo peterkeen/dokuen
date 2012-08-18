@@ -42,11 +42,11 @@ class Dokuen::Application
   end
 
   def push_code
-    puts "Creating release directory"
+    remote.log "Creating release directory"
     now = DateTime.now.new_offset(0).strftime("%Y%m%dT%H%M%S")
     release_path = "#{remote.path}/apps/#{name}/releases/#{now}"
     sudo("mkdir #{release_path}", :as => name)
-    puts "Pushing code"
+    remote.log "Pushing code"
     command = "tar --exclude=.git -c -z -f - . | ssh #{remote.server_name} sudo -u #{name} tar -C #{release_path} -x -z -f -"
     remote.trace(command)
     unless system(command)
