@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.version = Dokuen::VERSION
   s.date = `date +%Y-%m-%d`
 
-  s.summary = 'A Personal Application Platform for Macs'
+  s.summary = 'A Personal Application Platform'
   s.description = 'Like Heroku but Personal'
 
   s.author = 'Pete Keen'
@@ -28,8 +28,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency('rspec-mocks')
 
   s.add_dependency('thor')
-  s.add_dependency('mason', ">= 0.1.0")
-  s.add_dependency('foreman')
+  s.add_dependency('capistrano')
 
   
   s.homepage = 'https://github.com/peterkeen/dokuen'
