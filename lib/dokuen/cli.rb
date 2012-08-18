@@ -8,18 +8,13 @@ class Dokuen::CLI < Thor
   include Dokuen::Actions
 
   class_option :config, :type => :string, :desc => "Config file"
+  class_option :verbose, :type => :boolean, :desc => "Verbose logging"
 
   class SubCommand < Thor
 
     include Dokuen::Actions
 
     no_tasks do
-
-      def initialize(*args)
-        super(*args)
-        @config = Dokuen::Config.new(options[:config] || "~/.dokuen")
-      end
-
       def self.banner(task, namespace = true, subcommand = false)
         "#{basename} #{task.formatted_usage(self, true, subcommand)}"
       end
@@ -81,44 +76,47 @@ class Dokuen::CLI < Thor
 
   end
 
-  class Application < SubCommand
+  desc "create REMOTE NAME", "Create an application"
+  def create(remote, name)
+    verify_remote(remote)
 
-    namespace :app
+    say "Creating application #{name} on #{remote}"
 
-    desc "create REMOTE NAME", "Create an application"
-    def create(remote, name)
-      verify_remote(remote)
-
-      say "Creating application #{name} on #{remote}"
-
-      if @remote.application_exists? name
-        raise "Application #{name} already exists on remote #{remote}"
-      end
-      app = Dokuen::Application.new(@remote, name)
-      app.create!
+    if @remote.application_exists? name
+      raise Thor::Error.new "Application #{name} already exists on remote #{remote}"
     end
+    app = Dokuen::Application.new(@remote, name)
+    app.create!
+  end
 
-    desc "destroy REMOTE NAME", "Destroy an application"
-    def destroy(remote, name)
-      verify_remote(remote)
-      say "Destroying application #{name} on #{remote}"
+  desc "destroy REMOTE NAME", "Destroy an application"
+  def destroy(remote, name)
+    say "Destroying application #{name} on #{remote}"
+    verify_remote(remote)
+    verify_application(name)
 
-      raise "Application does not exist" unless @remote.application_exists?(name)
+    say "THIS IS PERMANENT"
+    say "Type '#{name}' at the prompt below to confirm"
 
-      say "THIS IS PERMANENT"
-      say "Type '#{name}' at the prompt below to confirm"
+    confirm = ask "Confirm: "
+    raise Thor::Error.new("Confirmation invalid!") unless confirm == name
 
-      confirm = ask "Confirm: "
-      raise "Confirmation invalid!" unless confirm == name
+    @app.destroy!
 
-      app = Dokuen::Application.new(@remote, name)
-      app.destroy!
-    end
+    say "#{name} destroyed"
+  end
+
+  desc "push REMOTE NAME", "Push a new release"
+  def push(remote, name)
+    say "Pushing a new release of #{name} to #{remote}"
+    verify_remote(remote)
+    verify_application(name)
+
+    release = @app.push!
+    say "Created release #{release}"
   end
 
   register(Remote, 'remote', 'remote <command>', 'Manipulate Dokuen remotes')
   register(Buildpack, 'buildpack', 'buildpack <command>', 'Manipulate Dokuen buildpacks')
-  register(Application, 'app', 'app <command>', 'Manipulate Dokuen applications')
 
 end
-
