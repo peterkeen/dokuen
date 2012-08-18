@@ -18,20 +18,6 @@ invocations.
 $ gem install dokuen
 ```
 
-### Step 2
-
-Install nginx using homebrew or your distro's package manager:
-
-On OS X:
-```
-$ brew install nginx
-```
-
-On Ubuntu:
-```
-$ sudo apt-get install nginx
-```
-
 ### Step 3
 
 Add a dokuen "remote" for your target server and run `dokuen remote prepare`:
@@ -47,6 +33,20 @@ $
 
 The user must have sudo permissions, and ideally will have passwordless sudo. This is
 not the user that applications will be running as.
+
+### Step 3
+
+Install nginx on the remote:
+
+On OS X:
+```
+$ ssh peter@subspace.bugsplat.info brew install nginx
+```
+
+On Ubuntu:
+```
+$ ssh peter@subspace.bugsplat.info sudo apt-get install nginx
+```
 
 ## Buildpacks
 
