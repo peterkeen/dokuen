@@ -1,3 +1,6 @@
+require 'foreman/procfile'
+require 'tempfile'
+
 class Dokuen::Application
 
   attr_reader :name, :remote
@@ -56,6 +59,7 @@ class Dokuen::Application
     remote.stream("#{remote.path}/buildpacks/#{buildpack}/bin/compile #{release_path} #{remote.path}/apps/#{name}/build", :as => name, :via => :sudo)
     release_info = YAML::load(remote.capture("#{remote.path}/buildpacks/#{buildpack}/bin/release #{release_path}"), :as => name, :via => :sudo)
     put_env(release_info, release_path)
+    put_procfile(release_info, release_path)
   end
 
   def put_env(release_info, release_path)
@@ -67,10 +71,42 @@ class Dokuen::Application
     remote.put_as(vars, "#{release_path}/.env", name)
   end
 
+  def put_procfile(release_info, release_path)
+    proc_path = "#{release_path}/Procfile"
+    remote.log("Generating Procfile")
+    existing_procfile = remote.get(proc_path)
+
+    proc = Foreman::Procfile.new
+    existing_entries = {}
+
+    if existing_procfile.strip != ""
+      remote.indent("Existing Procfile found, merging default types in")
+    
+      f = Tempfile.new('Procfile')
+      f.write(existing_procfile)
+      f.flush
+
+      proc = Foreman::Procfile.new(f.path)
+
+      f.close
+      f.unlink
+
+      proc.entries { |p| existing_entries[p.name] = 1 }
+    end
+
+    release_info["default_process_types"].each do |k,v|
+      next if existing_entries[k]
+      proc[k] = v
+    end
+
+    remote.put_as(proc.to_s, proc_path, name)
+
+  end
+
   def push!
     release_path = push_code
     app_type, buildpack = remote.detect_buildpack(release_path)
-    puts "Detected #{app_type} app"
+    remote.log("Detected #{app_type} app")
     build(app_type, buildpack, release_path)
     release_path
   end

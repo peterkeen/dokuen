@@ -29,7 +29,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency('thor')
   s.add_dependency('capistrano')
+  s.add_dependency('foreman')
 
-  
   s.homepage = 'https://github.com/peterkeen/dokuen'
 end

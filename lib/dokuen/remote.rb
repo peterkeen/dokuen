@@ -99,4 +99,15 @@ class Dokuen::Remote
     sudo("install -o #{user} -g #{user} -m #{perms} #{tmp} #{path}")
   end
 
+  def get(path)
+    capture("test -f #{path} && cat #{path}; echo")
+  end
+
+  def log(msg)
+    puts "-----> #{msg}"
+  end
+
+  def indent(msg)
+    puts "       #{msg}"
+  end
 end
