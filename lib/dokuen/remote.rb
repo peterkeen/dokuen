@@ -58,7 +58,7 @@ class Dokuen::Remote
   end
 
   def application_exists?(name)
-    @cap.capture("([ -d #{path}/apps/#{name} ] && echo #{name}) || echo '' ") != ""
+    @cap.capture("([ -d #{path}/apps/#{name} ] && echo #{name}) || echo '' ").strip != ""
   end
 
   def create_user(name)
