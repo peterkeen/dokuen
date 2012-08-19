@@ -10,6 +10,10 @@ class Dokuen::Application
     @name = name
   end
 
+  def app_path
+    "#{remote.path}/apps/#{name}"
+  end
+
   def run(*args)
     remote.run(*args)
   end
@@ -18,33 +22,33 @@ class Dokuen::Application
     remote.sudo(*args)
   end
 
-  def create!
+  def create!(port)
     return if remote.application_exists?(name)
 
     remote.create_user(name)
     dirs = [
       'releases',
-      'env',
       'logs',
       'build'
     ]
     dirs.each do |dir|
-      sudo("mkdir -p #{remote.path}/apps/#{name}/#{dir}")
+      sudo("mkdir -p #{app_path}/#{dir}")
     end
-    sudo("chown -R #{name}.#{name} #{remote.path}/apps/#{name}")
+    sudo("chown -R #{name}.#{name} #{app_path}")
+    remote.put_as(port, "#{app_path}/base_port", name)
   end
 
   def destroy!
     return unless remote.application_exists?(name)
 
-    sudo("rm -rf #{remote.path}/apps/#{name}")
+    sudo("rm -rf #{app_path}")
     sudo("userdel #{name}")
   end
 
   def push_code
     remote.log "Creating release directory"
     now = DateTime.now.new_offset(0).strftime("%Y%m%dT%H%M%S")
-    release_path = "#{remote.path}/apps/#{name}/releases/#{now}"
+    release_path = "#{app_path}/releases/#{now}"
     sudo("mkdir #{release_path}", :as => name)
     remote.log "Pushing code"
     command = "tar --exclude=.git -c -z -f - . | ssh #{remote.server_name} sudo -u #{name} tar -C #{release_path} -x -z -f -"
@@ -56,7 +60,7 @@ class Dokuen::Application
   end
 
   def build(app_type, buildpack, release_path)
-    remote.stream("#{remote.path}/buildpacks/#{buildpack}/bin/compile #{release_path} #{remote.path}/apps/#{name}/build", :as => name, :via => :sudo)
+    remote.stream("#{remote.path}/buildpacks/#{buildpack}/bin/compile #{release_path} #{app_path}/build", :as => name, :via => :sudo)
     release_info = YAML::load(remote.capture("#{remote.path}/buildpacks/#{buildpack}/bin/release #{release_path}"), :as => name, :via => :sudo)
     put_env(release_info, release_path)
     put_procfile(release_info, release_path)
@@ -67,7 +71,7 @@ class Dokuen::Application
       release_info['config_vars'].each do |k, v|
         a << "#{k}=#{v}"
       end
-    }.join("\n") + "\n"
+    }.join("\n") + "\nHOME=#{release_path}\n"
     remote.put_as(vars, "#{release_path}/.env", name)
   end
 
@@ -88,10 +92,7 @@ class Dokuen::Application
 
       proc = Foreman::Procfile.new(f.path)
 
-      f.close
-      f.unlink
-
-      proc.entries { |p| existing_entries[p.name] = 1 }
+      proc.entries { |p| existing_entries[p] = 1 }
     end
 
     release_info["default_process_types"].each do |k,v|
@@ -100,7 +101,28 @@ class Dokuen::Application
     end
 
     remote.put_as(proc.to_s, proc_path, name)
+  end
 
+  def concurrency
+    remote.get("#{app_path}/concurrency") || "web=1"
+  end
+
+  def concurrency=(val)
+    remote.put_as(val, "#{app_path}/concurrency", name)
+  end
+
+  def port
+    remote.get("#{app_path}/base_port") || 5000
+  end
+
+  def generate_init_files(release_path)
+    remote.log("Generating init files")
+    remote.foreman_export(release_path, concurrency, name, port)
+  end
+
+  def start_service
+    remote.log("Starting service")
+    remote.start_service(name)
   end
 
   def push!
@@ -108,6 +130,9 @@ class Dokuen::Application
     app_type, buildpack = remote.detect_buildpack(release_path)
     remote.log("Detected #{app_type} app")
     build(app_type, buildpack, release_path)
+    generate_init_files(release_path)
+    start_service
+
     release_path
   end
 

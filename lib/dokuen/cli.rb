@@ -76,8 +76,8 @@ class Dokuen::CLI < Thor
 
   end
 
-  desc "create REMOTE NAME", "Create an application"
-  def create(remote, name)
+  desc "create REMOTE NAME PORT", "Create an application with base port PORT"
+  def create(remote, name, port)
     verify_remote(remote)
 
     say "Creating application #{name} on #{remote}"
@@ -86,7 +86,7 @@ class Dokuen::CLI < Thor
       raise Thor::Error.new "Application #{name} already exists on remote #{remote}"
     end
     app = Dokuen::Application.new(@remote, name)
-    app.create!
+    app.create!(port)
   end
 
   desc "destroy REMOTE NAME", "Destroy an application"
@@ -114,6 +114,14 @@ class Dokuen::CLI < Thor
 
     release = @app.push!
     say "Created release #{release}"
+  end
+
+  desc "scale REMOTE NAME VALUE", "Scale to VALUE concurrency"
+  def scale(remote, name, value)
+    say "Scaling #{name} on #{remote} to #{value}"
+    verify_remote(remote)
+    verify_application(name)
+    @app.concurrency = value
   end
 
   register(Remote, 'remote', 'remote <command>', 'Manipulate Dokuen remotes')

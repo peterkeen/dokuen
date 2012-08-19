@@ -36,7 +36,7 @@ class Dokuen::Remote
   def stream(command, options={})
     @cap.invoke_command(command, options.merge(:eof => true)) do |ch, stream, out|
       print out if stream == :out
-      @cap.warn "[err :: #{ch[:server]}] #{out}" if stream == :err
+      print "[err :: #{ch[:server]}] #{out}" if stream == :err
     end
   end
 
@@ -81,6 +81,8 @@ class Dokuen::Remote
   end
 
   def detect_buildpack(release)
+    count = capture("ls #{path}/buildpacks | wc -l").to_i
+    raise Thor::Error.new("No buildpacks defined. Add some using `dokuen buildpack add`.") if count == 0
     output = capture("for b in `ls #{path}/buildpacks`; do #{path}/buildpacks/$b/bin/detect #{release} && echo $b && exit 0; done; echo").strip.split("\n")
     output.select { |l| l != "no" }
   end
@@ -90,7 +92,7 @@ class Dokuen::Remote
   end
 
   def create_user(name)
-    sudo("useradd --home #{path}/apps/#{name} --shell /usr/bin/false #{name}")
+    sudo("useradd --home #{path}/apps/#{name} #{name}")
   end
 
   def put_as(data, path, user, perms="0644")
@@ -100,7 +102,8 @@ class Dokuen::Remote
   end
 
   def get(path)
-    capture("test -f #{path} && cat #{path}; echo")
+    val = capture("test -f #{path} && cat #{path}; echo")
+    val.strip == '' ? nil : val
   end
 
   def log(msg)
@@ -110,4 +113,13 @@ class Dokuen::Remote
   def indent(msg)
     puts "       #{msg}"
   end
+
+  def start_service(name)
+    sudo("/usr/sbin/service #{name} restart || /usr/sbin/service #{name} start")
+  end
+
+  def foreman_export(release_path, concurrency, name, port)
+    stream("bash -c 'cd #{release_path} && foreman export -p #{port} -c #{concurrency} -a #{name} -l #{path}/apps/#{name}/logs upstart /etc/init'", :via => :sudo)
+  end
+
 end
