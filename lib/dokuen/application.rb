@@ -71,10 +71,7 @@ class Dokuen::Application
       end
     end
 
-    File.open(File.join(configs.dokuen_dir, 'perms', name), 'w+') do |f|
-      f.write(YAML.dump({'owner' => user, 'shared_with' => []}))
-    end
-
+    Dokeun::Permissions.create(configs.dokuen_dir, name)
   end
 
   def deploy(revision)

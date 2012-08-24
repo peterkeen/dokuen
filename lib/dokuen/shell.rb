@@ -13,7 +13,7 @@ end
 
 class Dokuen::Shell
 
-  attr_reader :command, :commandv, :user, :application, :basedir
+  attr_reader :command, :commandv, :user, :application, :basedir, :perms
 
   def initialize(basedir, command, user)
     @basedir = basedir
@@ -21,6 +21,7 @@ class Dokuen::Shell
     @user = user
     @commandv = Shellwords.split(command)
     @application = determine_appname
+    load_perms
   end
 
   def determine_appname
@@ -46,24 +47,11 @@ class Dokuen::Shell
   end
 
   def is_owner
-    with_perms_file do |perms|
-      return user == perms['owner']
-    end
+    return user == perms['owner']
   end
 
   def is_shared_with
-    with_perms_file do |perms|
-      return perms['shared_with'].include?(user)
-    end
-  end
-
-  def with_perms_file
-    filename = "#{basedir}/perms/#{application}"
-    if File.exists?(filename)
-      perms = YAML.load(File.read(filename))
-      return yield perms
-    end
-    return false
+    return (perms['shared_with'] || []).include?(user)
   end
 
   def is_authorized_user
@@ -126,6 +114,12 @@ class Dokuen::Shell
       run_git_command
     else
       run_dokuen_subcommand
+    end
+  end
+
+  def load_perms
+    if @application
+      @perms = Dokuen::Permissions.new(@basedir, @application)
     end
   end
 end

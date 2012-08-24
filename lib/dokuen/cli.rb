@@ -138,22 +138,36 @@ class Dokuen::CLI < Thor
 
   desc "grant USER", "Grant USER permissions for application"
   def grant(user)
-    # write a new permissions file with USER in the "shared_with" section
+    perms = Dokuen::Permissions.new(@config.dokuen_dir, options[:application])
+    perms['shared_with'] << user
+    perms.write
   end
 
   desc "revoke USER", "Remove USER permissions for application"
   def revoke(user)
-    # write a new permissions file without USER in the "shared_with" section
+    perms = Dokuen::Permissions.new(@config.dokuen_dir, options[:application])
+    perms['shared_with'].delete(user)
+    perms.write
   end
 
   desc "addkey USER", "Add a user's public key from stdin"
   def addkey(user)
-    # read stdin, write key to keys/USER.key, write ~/.ssh/authorized_keys
+    key = STDIN.read
+    File.open(File.join(@config.dokuen_dir, "keys", "#{user}.key")) do |f|
+      f.write(key)
+    end
+
+    render_authorized_keys
   end
 
   desc "removekey USER", "Remove a user's public key"
   def removekey(user)
-    # remove keys/USER.key, write ~/.ssh/authorized_keys
+    path = File.join(@config.dokuen_dir, "keys", "#{user}.key")
+    if File.exists(path)
+      File.delete(path)
+    end
+
+    render_authorized_keys
   end
 
 private
@@ -218,6 +232,10 @@ private
   def install_boot_script
     filename, template_name = Dokuen::Platform.boot_script(options[:platform])
     write_template(filename, template_name)
+  end
+
+  def render_authorized_keys
+    write_template("#{ENV['HOME']}/.ssh/authorized_keys", "authorized_keys", 0644)
   end
 
 end
