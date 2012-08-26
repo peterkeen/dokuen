@@ -25,7 +25,7 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency('rake')
   s.add_dependency('thor')
-  s.add_dependency('mason', ">= 0.1.0")
+  s.add_dependency('mason')
   s.add_dependency('foreman')
   
   s.homepage = 'https://github.com/peterkeen/dokuen'
