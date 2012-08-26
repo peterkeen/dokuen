@@ -136,33 +136,12 @@ class Dokuen::CLI < Thor
     app.run_command(args)
   end
 
-  desc "grant USER", "Grant USER permissions for application"
-  def grant(user)
-    # pass
-  end
-
-  desc "revoke USER", "Remove USER permissions for application"
-  def revoke(user)
-    # pass
-  end
-
-  desc "addkey USER", "Add a user's public key from stdin"
-  def addkey(user)
-    # pass
-  end
-
-  desc "removekey USER", "Remove a user's public key"
-  def removekey(user)
-    # pass
-  end
-
 private
 
   def setup_dirs
     dirs = [
       'apps',
       'env',
-      'perms',
       'ports',
       'nginx',
       'bin'
