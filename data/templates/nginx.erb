@@ -10,9 +10,6 @@ server {
     listen   443 ssl;
 
     server_name <%= name %>.<%= config.base_domain_name %>;
-    <% additional_domains.each do |domain| %>
-    server_name <%= domain %>;
-    <% end %>
 
     if ($ssl_protocol = "") {
        rewrite ^   https://$server_name$request_uri? permanent;
