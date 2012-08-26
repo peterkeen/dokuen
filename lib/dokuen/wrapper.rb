@@ -107,8 +107,15 @@ class Dokuen::Wrapper
       if not process.kill(term_signal)
         raise "Failed to kill process #{process.pid}"
       end
+
       File.delete(pidfile)
       File.delete("../../../../ports/#{port}")
+      sleep 15
+
+      if process.alive?
+        process.kill("KILL")
+      end
+
       exit! 0
     end
 
