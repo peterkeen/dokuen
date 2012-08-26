@@ -13,7 +13,6 @@ module Dokuen
 
 end
 
-require "dokuen/permissions"
 require "dokuen/cli"
 require "dokuen/config"
 require "dokuen/application"

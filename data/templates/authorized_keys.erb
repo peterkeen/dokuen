@@ -1,5 +1,0 @@
-<%- Dir.glob("#{@config.dokuen_dir}/keys/*.pub") do |keyfile| -%>
-<%- File.open(keyfile) do |f| -%>
-command="<%= @config.dokuen_dir %>/bin/dokuen-shell <%= File.basename(keyfile).split('.')[0] %>",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty <%= f.read.strip %>
-<%- end -%>
-<%- end -%>

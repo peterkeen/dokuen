@@ -36,8 +36,7 @@ describe Dokuen::Shell do
       File.open("#{@tmpdir}/perms/foo", "w+") do |f|
         f.write(YAML.dump({'owner' => 'user'}))
       end
-
-      @shell.load_perms
+  
       @shell.is_owner.should eq true
     end
   
@@ -47,8 +46,7 @@ describe Dokuen::Shell do
       File.open("#{@tmpdir}/perms/foo", "w+") do |f|
         f.write(YAML.dump({'shared_with' => ['user']}))
       end
-
-      @shell.load_perms
+  
       @shell.is_shared_with.should eq true
     end
   
@@ -58,8 +56,6 @@ describe Dokuen::Shell do
       File.open("#{@tmpdir}/superusers", "w+") do |f|
         f.write('user')
       end
-
-      @shell.load_perms
       @shell.is_authorized_user.should eq true
     end
   
@@ -69,8 +65,7 @@ describe Dokuen::Shell do
       File.open("#{@tmpdir}/perms/foo", "w+") do |f|
         f.write(YAML.dump({'owner' => 'user'}))
       end
-
-      @shell.load_perms
+  
       @shell.is_authorized_user.should eq true
     end
   
@@ -80,8 +75,7 @@ describe Dokuen::Shell do
       File.open("#{@tmpdir}/perms/foo", "w+") do |f|
         f.write(YAML.dump({'shared_with' => ['user']}))
       end
-
-      @shell.load_perms
+  
       @shell.is_authorized_user.should eq true
     end
   end
