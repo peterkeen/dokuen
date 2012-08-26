@@ -53,7 +53,7 @@ class Dokuen::Application
     vars
   end
 
-  def create(user)
+  def create
     Dir.chdir(File.join(config.dokuen_dir, 'apps')) do
       if File.exists?(name)
         raise "Application #{name} exists!"
@@ -70,11 +70,6 @@ class Dokuen::Application
         FileUtils.mkdir_p(dirs)
       end
     end
-
-    File.open(File.join(configs.dokuen_dir, 'perms', name), 'w+') do |f|
-      f.write(YAML.dump({'owner' => user, 'shared_with' => []}))
-    end
-
   end
 
   def deploy(revision)

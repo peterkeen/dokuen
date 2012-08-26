@@ -138,22 +138,22 @@ class Dokuen::CLI < Thor
 
   desc "grant USER", "Grant USER permissions for application"
   def grant(user)
-    # write a new permissions file with USER in the "shared_with" section
+    # pass
   end
 
   desc "revoke USER", "Remove USER permissions for application"
   def revoke(user)
-    # write a new permissions file without USER in the "shared_with" section
+    # pass
   end
 
   desc "addkey USER", "Add a user's public key from stdin"
   def addkey(user)
-    # read stdin, write key to keys/USER.key, write ~/.ssh/authorized_keys
+    # pass
   end
 
   desc "removekey USER", "Remove a user's public key"
   def removekey(user)
-    # remove keys/USER.key, write ~/.ssh/authorized_keys
+    # pass
   end
 
 private

@@ -6,11 +6,7 @@ def sys(cmd)
   system(cmd) or raise "Error running #{cmd}"
 end
 
-task :spec do
-  sys "rspec specs/*spec.rb"
-end
-
-task :build => :spec do
+task :build do
   sys "gem build dokuen.gemspec"
 end
  
@@ -20,4 +16,3 @@ task :release => :build do
   sys "git push github master --tags"
   sys "gem push dokuen-#{Dokuen::VERSION}.gem"
 end
-
