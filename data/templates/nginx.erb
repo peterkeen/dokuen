@@ -7,20 +7,16 @@ upstream <%= name %> {
 
 server {
     listen   80;
-    <% if use_ssl %>
     listen   443 ssl;
-    <% end %>
 
     server_name <%= name %>.<%= config.base_domain_name %>;
     <% additional_domains.each do |domain| %>
     server_name <%= domain %>;
     <% end %>
 
-    <% if use_ssl %>
     if ($ssl_protocol = "") {
        rewrite ^   https://$server_name$request_uri? permanent;
     }
-    <% end %>
 
     location / {
         proxy_pass http://<%= name %>;
