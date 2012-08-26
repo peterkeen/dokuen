@@ -93,21 +93,18 @@ class Dokuen::Shell
     return true
   end
 
-  def run_command(command)
-    system(command, :in => $stdin, :out => $stdout, :err => $stderr)
-    raise Dokuen::ExitCode.new($?.exitstatus, '')
-  end
-    
   def run_git_command
-    repo = "#{basedir}/repos/#{commandv[1]}"
-    run_command("#{commandv[0]} '#{repo}'")
+    repo = "#{basedir}/repos/#{commandV[1]}"
+    system("#{commandV[0]} '#{repo}'")
+    raise Dokuen::ExitCode.new($?.exitstatus, '')
   end
 
   def run_dokuen_subcommand
     check_superuser_command
     check_owner_command
-
-    run_command("#{basedir}/bin/dokuen #{command}")
+                           
+    system("#{basedir}/bin/dokuen #{command}", :in => $stdin, :out => $stdout, :err => $stderr)
+    raise Dokuen::ExitCode.new($?.exitstatus, '')
   end
 
   def run

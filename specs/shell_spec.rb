@@ -123,21 +123,7 @@ describe Dokuen::Shell do
 
       lambda { Dokuen::Shell.new(@tmpdir, 'revoke shared_with --application=foo', 'shared_with').check_owner_command }.should raise_error(Dokuen::ExitCode)
     end
-
-    it "should actually run a git command" do
-      shell = Dokuen::Shell.new(@tmpdir, 'git-receive-pack foo.git', 'owner')
-      shell.stub(:run_command)
-      shell.should_receive(:run_command).with("git-receive-pack '#{@tmpdir}/repos/foo.git'")
-      shell.run()
-    end
-
-    it "should actually run a dokuen command" do
-      shell = Dokuen::Shell.new(@tmpdir, 'config_set SOMEVAR=someval --application=foo', 'owner')
-      shell.stub(:run_command)
-      shell.should_receive(:run_command).with("#{@tmpdir}/bin/dokuen config_set SOMEVAR=someval --application=foo")
-      shell.run()
-    end
-
+    
   end
 
 end
