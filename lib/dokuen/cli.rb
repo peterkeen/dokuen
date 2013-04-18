@@ -23,7 +23,7 @@ class Dokuen::CLI < Thor
   method_option :gitgroup, :desc => "Group of git user", :default => 'staff'
   method_option :appuser, :desc => "Username of app user", :default => 'dokuen'
   method_option :gitolite, :desc => "Path to gitolite directory", :default => 'GITUSER_HOME/gitolite'
-  method_option :platform, :desc => "Which platform to install. Can be 'mac', 'ubuntu', or 'centos'", :default => 'mac'  
+  method_option :platform, :desc => "Which platform to install. Can be 'mac', 'ubuntu', or 'centos'"
   def setup(dir)
 
     @current_script = File.expand_path($0)
@@ -195,7 +195,8 @@ private
   end
 
   def install_boot_script
-    filename, template_name = Dokuen::Platform.boot_script(options[:platform])
+    platform = options[:platform] || Dokuen::Platform.detect
+    filename, template_name = Dokuen::Platform.boot_script(platform)
     write_template(filename, template_name)
   end
 
