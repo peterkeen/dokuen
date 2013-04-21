@@ -70,6 +70,21 @@ class Dokuen::Application
         FileUtils.mkdir_p(dirs)
       end
     end
+    git_name = "#{name}.git"
+    Dir.chdir(File.join(config.dokuen_dir, 'repos')) do
+      if File.exists?(git_name)
+        raise "Repository #{name} exists!"
+      end
+      FileUtils.mkdir_p(git_name)
+      Dir.chdir(git_name) do
+        sys("git init --bare")
+        data = Dokuen.template('pre_receive_hook', binding)
+        File.open('hooks/pre-receive', "w") do |f|
+          f.write data
+        end
+        File.chmod(0755, 'hooks/pre-receive')
+      end
+    end
   end
 
   def deploy(revision)

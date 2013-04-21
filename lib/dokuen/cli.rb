@@ -10,7 +10,10 @@ class Dokuen::CLI < Thor
     super(*args)
 
     if not options[:config].nil?
+      raise Thor::Error, "Config option not allowed over ssh" if ENV['SSH_ORIGINAL_COMMAND']
       @config = Dokuen::Config.new(options[:config])
+    elsif !ENV['DOKUEN_CONF'].nil?
+      @config = Dokuen::Config.new(ENV['DOKUEN_CONF'])
     end
   end
 
@@ -19,30 +22,37 @@ class Dokuen::CLI < Thor
   class_option :debug, :type => :boolean, :desc => "Show backtraces"
 
   desc "setup DIR", "set up dokuen in the given directory"
-  method_option :gituser, :desc => "Username of git user", :default => 'git'
-  method_option :gitgroup, :desc => "Group of git user", :default => 'staff'
   method_option :appuser, :desc => "Username of app user", :default => 'dokuen'
-  method_option :gitolite, :desc => "Path to gitolite directory", :default => 'GITUSER_HOME/gitolite'
+  method_option :appgroup, :desc => "Group of app user", :default => 'staff'
   method_option :platform, :desc => "Which platform to install. Can be 'mac', 'ubuntu', or 'centos'", :default => 'mac'  
   def setup(dir)
-
     @current_script = File.expand_path($0)
     @current_bin_path = File.dirname(@current_script)
 
     Dir.chdir(dir) do
       setup_dirs
+      setup_ssh
       setup_bin
-      setup_gitolite
       write_config
       install_boot_script
       puts Dokuen.template('instructions', binding)
     end
   end
+  
+  desc "adduser", "adds a new user"
+  def adduser(user, key=STDIN.read)
+    Dokuen::Keys.new(@config).create(user, key)
+  end
+
+  desc "removeuser", "deletes existing user"
+  def removeuser(user)
+    Dokuen::Keys.new(@config).remove(user)
+  end
 
   desc "create", "create application"
   def create
     Dokuen::Application.new(options[:application], @config).create
-    puts "git remote add dokuen #{@config.git_user}@#{@config.git_server}:apps/#{options[:application]}.git"
+    puts "git remote add dokuen #{@config.app_user}@#{@config.git_server}:#{options[:application]}.git"
   end
 
   desc "deploy", "deploy application", :hide => true
@@ -144,40 +154,43 @@ private
       'env',
       'ports',
       'nginx',
-      'bin'
+      'bin',
+      'keys',
+      'repos'
     ]
 
     dirs.each do |dir|
       empty_directory(File.join(Dir.getwd, dir))
     end
 
-    FileUtils.chown(options[:gituser], options[:gitgroup], dirs)
+    FileUtils.chown(options[:appuser], options[:appgroup], dirs)
     FileUtils.chmod(0777, ['apps', 'ports', 'nginx'])
+  end
+  
+  def setup_ssh
+    ssh_dir = File.expand_path("~#{options[:appuser]}/.ssh")
+    empty_directory(ssh_dir)
+    FileUtils.chown(options[:appuser], options[:appgroup], ssh_dir)
+    FileUtils.chmod(0700, ssh_dir)
   end
 
   def setup_bin
     @script_path = File.expand_path("bin/dokuen")
+    @shell_script_path = File.expand_path("bin/dokuen-shell")
     @deploy_script_path = File.expand_path("bin/dokuen-deploy")
     write_template(@script_path, "bin_command", 0755)
+    write_template(@shell_script_path, "shell_command", 0755)
     write_template(@deploy_script_path, "deploy_command", 0755)
-  end
-
-  def setup_gitolite
-    githome = File.expand_path("~#{options[:gituser]}")
-    gitolite = options[:gitolite].gsub('GITUSER_HOME', githome)
-
-    write_template("#{gitolite}/src/commands/dokuen", 'gitolite_command', 0755)
-    write_template("#{githome}/.gitolite/hooks/common/pre-receive", 'pre_receive_hook', 0755)
   end
 
   def write_config
     config = {
       'base_domain_name' => 'dokuen',
       'git_server'       => `hostname`.chomp,
-      'git_user'         => options[:gituser],
       'app_user'         => options[:appuser],
       'min_port'         => 5000,
       'max_port'         => 6000,
+      'app_user_home'    => File.expand_path("~#{options[:appuser]}"),
       'bin_path'         => @current_bin_path,
       'dokuen_dir'       => File.expand_path('.')
     }
@@ -198,5 +211,4 @@ private
     filename, template_name = Dokuen::Platform.boot_script(options[:platform])
     write_template(filename, template_name)
   end
-
 end

@@ -1,4 +1,3 @@
 #!/bin/bash
-
 export DOKUEN_CONF=<%= File.expand_path("dokuen.conf") %>
-<%= @current_script %> "$@"
+<%= @current_bin_path %>/dokuen-shell "$@"

@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-hook = `git config hooks.pre`.chomp
 
 rev = nil
 
@@ -9,8 +8,5 @@ STDIN.each do |line|
   rev = parts[1]
 end
 
-if hook != ""
-  name = File.basename(ENV['GL_REPO']).gsub(".git", '')
-  cmd = "env REV=#{rev} APP=#{name} #{hook}"
-  system(cmd) or raise "Error running pre-hook: #{cmd} returned #{$?}"
-end
+cmd = "env REV=#{rev} #{ENV['DOKUEN_DIR']}/bin/dokuen-deploy"
+system(cmd) or raise "Error running pre-hook: #{cmd} returned #{$?}"
