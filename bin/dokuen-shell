@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+
+unless ENV['SSH_CONNECTION']
+  puts "Only ssh allowed"
+  exit
+end
+
+begin
+  require 'dokuen'
+rescue LoadError => e
+  path = File.expand_path '../../lib', __FILE__
+  $:.unshift(path) if File.directory?(path) && !$:.include?(path)
+  require 'dokuen'
+end
+
+#
+#
+# Dokuen shell, invoked from ~/.ssh/authorized_keys
+#
+#
+Dokuen::Shell.new.exec
+
+exit

@@ -1,24 +1,10 @@
 ==== IMPORTANT INSTRUCTIONS ====
 
-In your .gitolite.rc file, in the COMMANDS section, add the following:
-
-    'dokuen' => 1
-
-In your gitolite.conf file, add the following:
-
-repo apps/[a-zA-Z0-9].*
-    C = @all
-    RW+ = CREATOR
-    config hooks.pre = "<%= File.expand_path('./bin/dokuen-deploy') %>"
-
 In your nginx.conf, add the following to your http section:
 
 include "<%= File.expand_path('nginx') %>/*.conf";
 
 Run "sudo visudo" and add the following lines:
 
-Runas_Alias	APPUSERS = <%= options[:appuser] %>
-
-git	ALL=(APPUSERS) NOPASSWD: <%= File.expand_path('./bin/dokuen') %>
 <%= options[:appuser] %>	ALL=NOPASSWD: <%= @current_bin_path %>/dokuen_restart_nginx
 
