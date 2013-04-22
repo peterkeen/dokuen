@@ -24,7 +24,7 @@ class Dokuen::CLI < Thor
   desc "setup DIR", "set up dokuen in the given directory"
   method_option :appuser, :desc => "Username of app user", :default => 'dokuen'
   method_option :appgroup, :desc => "Group of app user", :default => 'staff'
-  method_option :platform, :desc => "Which platform to install. Can be 'mac', 'ubuntu', or 'centos'", :default => 'mac'  
+  method_option :platform, :desc => "Which platform to install. Can be 'mac', 'ubuntu', or 'centos'"
   def setup(dir)
     @current_script = File.expand_path($0)
     @current_bin_path = File.dirname(@current_script)
@@ -208,7 +208,8 @@ private
   end
 
   def install_boot_script
-    filename, template_name = Dokuen::Platform.boot_script(options[:platform])
+    platform = options[:platform] || Dokuen::Platform.detect
+    filename, template_name = Dokuen::Platform.boot_script(platform)
     write_template(filename, template_name)
   end
 end
